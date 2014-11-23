@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Betrayal House!</title>
+  <script src='/components/webcomponentsjs/webcomponents.js'></script>
+  <link rel='import' href='/components/polymer/polymer.html'>
+  <style>
+    body {
+      background-color: rgba(1,1,1, 0.9);
+      color: white;
+    }
+    html /deep/ div[charcolor=green] .name {
+      color: green;
+    }
+    html /deep/ div[charcolor=white] .name {
+      color: white;
+    }
+    html /deep/ div[charcolor=red] .name {
+      color: red;
+    }
+    html /deep/ div[charcolor=blue] .name {
+      color: rgb(59, 59, 250);
+    }
+    html /deep/ div[charcolor=purple] .name {
+      color: rgb(211, 0, 211);
+    }
+    html /deep/ div[charcolor=orange] .name {
+      color: orange;
+    }
+  </style>
+</head>
+<body>
+<polymer-element name='betrayal-house-landing'>
+  <template>
+    <button>New Game</button>
+    <button>Join Game</button>
+    <button>Offline</button>
+  </template>
+  <script>
+    Polymer('betrayal-house-landing', {});
+  </script>
+</polymer-element>
+
+<polymer-element name='betrayal-house-newgame'>
+  <template>
+    <label>Your nickname:</label>
+    <input>
+    <button>Ok</button>
+  </template>
+  <script>
+    Polymer('betrayal-house-newgame', {});
+  </script>
+</polymer-element>
+
+<polymer-element name='betrayal-house-joingame'>
+  <template>
+    <label>Your nickname:</label>
+    <input>
+    <label>Room code:</label>
+    <input>
+    <button>Ok</button>
+  </template>
+  <script>
+    Polymer('betrayal-house-joingame', {});
+  </script>
+</polymer-element>
+
+<polymer-element name='betrayal-house-choose-character' attributes='character characters'>
+  <template>
+    <style>
+      header {
+        font-size: 2.5em;
+      }
+      .name {
+        font-size: 2em;
+        cursor: pointer;
+      }
+      .statName {
+        display: inline-block;
+        width: 100px;
+      }
+      [highlight] {
+        color: red;
+      }
+    </style>
+    <header>
+      Select your character.
+    </header>
+    <template repeat='{{char in characters}}'>
+      <div charcolor='{{char.color}}'>
+        <div class='name' on-tap='{{selectCharacter}}'>{{char.name}}</div>
+        <div>{{char.height}}, {{char.weight}}lbs, {{char.age}} years old</div>
+        <div>Hobbies: {{char.hobbies}}</div>
+        <div>
+          <template repeat='{{idx in [0,1,2,3]}}'>
+            <div>
+              <span class='statName'>{{statNames[idx]}}</span>
+              <span>
+                <template repeat='{{val, i in char.statRanges[idx]}}'>
+                  <span highlight?='{{i == char.initialStatIndexes[idx]}}'>
+                    {{val}}
+                  </span>
+                </template>
+              </span>
+            </div>
+          </template>
+        </div>
+      </div>
+    </template>
+  </template>
+  <script>
+    Polymer('betrayal-house-choose-character', {
+      selectCharacter: function(ev, val, elmnt) {
+        this.character = elmnt.templateInstance.model.char;
+        this.fire('betrayal-character-chosen', this.character);
+      },
+      statNames: ["Speed", "Might", "Sanity", "Knowledge"],
+    });
+
+
+  </script>
+</polymer-element>
+
+<polymer-element name='betrayal-house-character-page' attributes='character'>
+  <template>
+    <style>
+      .back-button {
+        cursor: pointer;
+      }
+      .name {
+        font-size: 2em;
+        cursor: pointer;
+      }
+      .statName {
+        display: inline-block;
+        width: 100px;
+      }
+      [highlight] {
+        color: red;
+      }
+    </style>
+    <div class='back-button' on-tap='{{goBack}}'>&lt; Back</div>
+    <div charcolor='{{char.color}}'>
+      <div class='name' on-tap='{{selectCharacter}}'>{{char.name}}</div>
+      <div>{{char.height}}, {{char.weight}}lbs, {{char.age}} years old</div>
+      <div>Hobbies: {{char.hobbies}}</div>
+      <div>
+        <template repeat='{{idx in [0,1,2,3]}}'>
+          <div>
+            <span class='statName'>{{statNames[idx]}}</span>
+            <span>
+              <template repeat='{{val, i in char.statRanges[idx]}}'>
+                <span highlight?='{{i == char.initialStatIndexes[idx]}}'>
+                  {{val}}
+                </span>
+              </template>
+            </span>
+          </div>
+        </template>
+      </div>
+    </div>
+  </template>
+  <script>
+    Polymer('betrayal-house-character-page', {
+      computed: {
+        'char': 'character'
+      },
+      statNames: ["Speed", "Might", "Sanity", "Knowledge"],
+      goBack: function() {
+        this.character = null;
+      }
+    });
+  </script>
+</polymer-element>
+
+<polymer-element name='betrayal-house-app'>
+  <template>
+    <template if='{{!character}}'>
+      <betrayal-house-choose-character characters='{{characters}}'
+                                       character='{{character}}'>
+      </betrayal-house-choose-character>
+    </template>
+    <template if='{{character}}'>
+      <betrayal-house-character-page character='{{character}}'>
+      </betrayal-house-character-page>
+    </template>
+  </template>
+  <script>
+    Polymer('betrayal-house-app', {
+      created: function() {
+        this.character = this.characters[5]
+      },
+      characters: [
+        {
+          name: 'Heather Granville', color: 'purple', birthday: 'August 2nd',
+          age: 18, height: "5'2", hobbies: "Television, Shopping",
+          weight: 120,
+          statRanges: [
+            [3,3,4,5,6,6,7,8],
+            [3,3,3,4,5,6,7,8],
+            [3,3,3,4,5,6,6,6],
+            [2,3,3,4,5,6,7,8]
+          ],
+          initialStatIndexes: [
+            2,2,2,4
+          ],
+        },
+        {
+          name: 'Jenny LeClerc', color: 'purple', birthday: 'March 4th',
+          age: 21, height: "5'7", hobbies: "Reading, Soccer",
+          weight: 142,
+          statRanges: [
+            [2,3,4,4,4,5,6,8],
+            [3,4,4,4,4,5,6,8],
+            [1,1,2,4,4,4,5,6],
+            [2,3,3,4,4,5,6,8]
+          ],
+          initialStatIndexes: [
+            3,2,4,2
+          ],
+        },
+        {
+          name: 'Peter Akimoto', color: 'green', birthday: 'September 3rd',
+          age: 13, height: "4'11", hobbies: "Bugs, Basketball",
+          weight: 98,
+          statRanges: [
+            [3,3,3,4,6,6,7,7],
+            [2,3,3,4,5,5,6,8],
+            [3,4,4,4,5,6,6,7],
+            [3,4,4,5,6,7,7,8]
+          ],
+          initialStatIndexes: [
+            3,2,3,2
+          ],
+        },
+        {
+          name: 'Brandon Jaspers', color: 'green', birthday: 'May 21st',
+          age: 12, height: "5'1", hobbies: "Computers, Camping, Hockey",
+          weight: 109,
+          statRanges: [
+            [3,4,4,4,5,6,7,8],
+            [2,3,3,4,5,6,6,7],
+            [3,3,3,4,5,6,7,8],
+            [1,3,3,5,5,6,6,7]
+          ],
+          initialStatIndexes: [
+            2,3,3,2
+          ],
+        },
+        {
+          name: 'Professor Longfellow', color: 'white', birthday: 'July 27th',
+          age: 57, height: "5'11", hobbies: "Gaelic Music, Drama, Fine Wines",
+          weight: 153,
+          statRanges: [
+            [2,2,4,4,5,5,6,6],
+            [1,2,3,4,5,5,6,6],
+            [1,3,3,4,5,5,6,7],
+            [4,5,5,5,5,6,7,8]
+          ],
+          initialStatIndexes: [
+            3,2,2,4
+          ],
+        },
+        {
+          name: 'Father Rhinehardt', color: 'white', birthday: 'April 29th',
+          age: 62, height: "5'9", hobbies: "Fencing, Gardening",
+          weight: 185,
+          statRanges: [
+            [2,3,3,4,5,6,7,7],
+            [1,2,2,4,4,5,5,7],
+            [3,4,5,5,6,7,7,8],
+            [1,3,3,4,5,6,6,8]
+          ],
+          initialStatIndexes: [
+            2,2,4,3
+          ],
+        },
+        {
+          name: 'Vivian Lopez', color: 'blue', birthday: 'January 11th',
+          age: 42, height: "5'5", hobbies: "Old Movies, Horses",
+          weight: 142,
+          statRanges: [
+            [3,4,4,4,4,6,7,8],
+            [2,2,2,4,4,5,6,6],
+            [4,4,4,5,6,7,8,8],
+            [4,5,5,5,5,6,6,7]
+          ],
+          initialStatIndexes: [
+            3,2,2,3
+          ],
+        },
+        {
+          name: 'Madame Zostra', color: 'blue', birthday: 'December 10th',
+          age: 37, height: "5'0", hobbies: "Astrology, Cooking, Baseball",
+          weight: 150,
+          statRanges: [
+            [2,3,3,5,5,6,6,7],
+            [2,3,3,4,5,5,5,6],
+            [4,4,4,5,6,7,8,8],
+            [1,3,4,4,4,5,6,6]
+          ],
+          initialStatIndexes: [
+            2,3,2,3
+          ],
+        },
+        {
+          name: 'Ox Bellows', color: 'red', birthday: 'October 18th',
+          age: 23, height: "6'4", hobbies: "Football, Shiny Objects",
+          weight: 288,
+          statRanges: [
+            [2,2,2,3,4,5,5,6],
+            [4,5,5,6,6,7,8,8],
+            [2,2,3,4,5,5,6,7],
+            [2,2,3,3,5,5,6,6]
+          ],
+          initialStatIndexes: [
+            4,2,2,2
+          ],
+        },
+        {
+          name: 'Darren "Flash" Williams', color: 'red', birthday: 'June 6th',
+          age: 20, height: "5'11",
+          hobbies: "Track, Music, Shakesperean Literature",
+          weight: 188,
+          statRanges: [
+            [4,4,4,5,6,7,7,8],
+            [2,3,3,4,5,6,6,7],
+            [1,2,3,4,5,5,5,7],
+            [2,3,3,4,5,5,5,7]
+          ],
+          initialStatIndexes: [
+            4,2,2,2
+          ],
+        },
+        {
+          name: 'Zoe Ingstrom', color: 'orange', birthday: 'November 5th',
+          age: 8, height: "3'9", hobbies: "Dolls, Music",
+          weight: 49,
+          statRanges: [
+            [4,4,4,4,5,6,8,8],
+            [2,2,3,3,4,4,6,7],
+            [3,4,5,5,6,6,7,8],
+            [1,2,3,4,4,5,5,5]
+          ],
+          initialStatIndexes: [
+            3,3,2,2
+          ],
+        },
+        {
+          name: 'Missy Dubourde', color: 'orange', birthday: 'February 14th',
+          age: 9, height: "4'2", hobbies: "Swimming, Medicine",
+          weight: 62,
+          statRanges: [
+            [3,4,5,6,6,6,7,7],
+            [2,3,3,3,4,5,6,7],
+            [1,2,3,4,5,5,6,7],
+            [2,3,4,4,5,6,6,6]
+          ],
+          initialStatIndexes: [
+            2,3,2,3
+          ]
+        },
+      ]
+    })
+  </script>
+</polymer-element>
+
+<betrayal-house-app></betrayal-house-app>
+</body>
+</html>
