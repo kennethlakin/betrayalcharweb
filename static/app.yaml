@@ -8,6 +8,9 @@ handlers:
 - url: /components/
   static_dir: bower_components/
 
+- url: /images/
+  static_dir: images/
+
 - url: /
   static_files: index.html
   upload: index.html

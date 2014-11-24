@@ -1,35 +1,69 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset='utf-8'>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Betrayal House!</title>
   <script src='/components/webcomponentsjs/webcomponents.js'></script>
   <link rel='import' href='/components/polymer/polymer.html'>
-  <style>
+  <link rel='import' href='/components/font-roboto/roboto.html'>
+  <link href="/components/core-animated-pages/core-animated-pages.html" rel="import">
+  <link href="/components/core-animated-pages/transitions/slide-from-right.html" rel="import">
+  <style shim-shadowdom>
     body {
+      font-family: 'RobotoDraft';
       background-color: rgba(1,1,1, 0.9);
       color: white;
+      will-change: color;
+      transition: background-color 1.2s ease-in;
+    }
+    body[dead] {
+      transition: background-color 5.3s ease-in;
+      background-color: rgba(179, 3, 3, 1);
+    }
+    body[dead] /deep/ [highlight] {
+      color: black;
     }
     html /deep/ div[charcolor=green] .name {
       color: green;
     }
+    html /deep/ div[charcolor=green] [charBgColor] {
+      background-color: green;
+    }
     html /deep/ div[charcolor=white] .name {
       color: white;
+    }
+    html /deep/ div[charcolor=white] [charBgColor] {
+      background-color: white;
     }
     html /deep/ div[charcolor=red] .name {
       color: red;
     }
+    html /deep/ div[charcolor=red] [charBgColor] {
+      background-color: red;
+    }
     html /deep/ div[charcolor=blue] .name {
       color: rgb(59, 59, 250);
+    }
+    html /deep/ div[charcolor=blue] [charBgColor] {
+      background-color: rgb(59, 59, 250);
     }
     html /deep/ div[charcolor=purple] .name {
       color: rgb(211, 0, 211);
     }
+    html /deep/ div[charcolor=purple] [charBgColor] {
+      background-color: rgb(211, 0, 211);
+    }
     html /deep/ div[charcolor=orange] .name {
       color: orange;
     }
+    html /deep/ div[charcolor=orange] [charBgColor] {
+      background-color: orange;
+    }
   </style>
 </head>
-<body>
+
+<body unresolved fullbleed>
 <polymer-element name='betrayal-house-landing'>
   <template>
     <button>New Game</button>
@@ -71,6 +105,9 @@
       header {
         font-size: 2.5em;
       }
+      .character {
+        padding-top: 30px;
+      }
       .name {
         font-size: 2em;
         cursor: pointer;
@@ -84,26 +121,30 @@
       }
     </style>
     <header>
-      Select your character.
+      Who are you?
     </header>
-    <template repeat='{{char in characters}}'>
-      <div charcolor='{{char.color}}'>
-        <div class='name' on-tap='{{selectCharacter}}'>{{char.name}}</div>
-        <div>{{char.height}}, {{char.weight}}lbs, {{char.age}} years old</div>
-        <div>Hobbies: {{char.hobbies}}</div>
+    <template repeat='[[char in characters]]'>
+      <div class='character' charcolor='[[char.color]]' layout horizontal>
+        <div><img height='152' width='152' on-tap='[[selectCharacter]]'
+                  src='[[char.image]]'></div>
         <div>
-          <template repeat='{{idx in [0,1,2,3]}}'>
-            <div>
-              <span class='statName'>{{statNames[idx]}}</span>
-              <span>
-                <template repeat='{{val, i in char.statRanges[idx]}}'>
-                  <span highlight?='{{i == char.initialStatIndexes[idx]}}'>
-                    {{val}}
-                  </span>
-                </template>
-              </span>
-            </div>
-          </template>
+          <div class='name' on-tap='[[selectCharacter]]'>[[char.name]]</div>
+          <div>[[char.height]], [[char.weight]]lbs, [[char.age]] years old</div>
+          <div>Hobbies: [[char.hobbies]]</div>
+          <div>
+            <template repeat='[[idx in [0,1,2,3] ]]'>
+              <div>
+                <span class='statName'>[[statNames[idx] ]]</span>
+                <span>
+                  <template repeat='[[val, i in char.statRanges[idx] ]]'>
+                    <span highlight?='[[i == char.initialStatIndexes[idx] ]]'>
+                      [[val]]
+                    </span>
+                  </template>
+                </span>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
     </template>
@@ -116,58 +157,126 @@
       },
       statNames: ["Speed", "Might", "Sanity", "Knowledge"],
     });
-
-
   </script>
 </polymer-element>
 
 <polymer-element name='betrayal-house-character-page' attributes='character'>
   <template>
     <style>
+      :host {
+        height: 1vh;
+        display: block;
+      }
       .back-button {
+        padding-bottom: 20px;
         cursor: pointer;
       }
       .name {
         font-size: 2em;
-        cursor: pointer;
       }
       .statName {
-        display: inline-block;
-        width: 100px;
+        font-size: 2em;
       }
       [highlight] {
         color: red;
       }
+      .stat {
+        padding-top: 40px;
+      }
+      .statVals {
+        width: 100%;
+        /*max-width: 600px;*/
+        font-size: 2em;
+      }
+      .statVals * {
+        will-change: color;
+        transition: color 0.3s ease-in-out;
+      }
+      .statVals button:first-child {
+        margin-right: 50px;
+      }
+      .statVals button:last-child {
+        margin-left: 50px;
+      }
+      .main {
+        /*height: 1vh;*/
+      }
+      button {
+        outline: none;
+        border: none;
+      }
     </style>
-    <div class='back-button' on-tap='{{goBack}}'>&lt; Back</div>
-    <div charcolor='{{char.color}}'>
-      <div class='name' on-tap='{{selectCharacter}}'>{{char.name}}</div>
-      <div>{{char.height}}, {{char.weight}}lbs, {{char.age}} years old</div>
-      <div>Hobbies: {{char.hobbies}}</div>
+    <div class='main' charcolor='{{char.color}}' layout vertical justified>
       <div>
-        <template repeat='{{idx in [0,1,2,3]}}'>
-          <div>
-            <span class='statName'>{{statNames[idx]}}</span>
-            <span>
-              <template repeat='{{val, i in char.statRanges[idx]}}'>
-                <span highlight?='{{i == char.initialStatIndexes[idx]}}'>
-                  {{val}}
-                </span>
-              </template>
-            </span>
-          </div>
-        </template>
+        <div class='back-button' on-tap='{{goBack}}'>&lt; Back</div>
+        <div class='name' on-tap='{{selectCharacter}}'>{{char.name}}</div>
+        <div>{{char.height}}, {{char.weight}}lbs, {{char.age}} years old</div>
+        <div>Hobbies: {{char.hobbies}}</div>
       </div>
+      <template repeat='{{idx in [0,1,2,3]}}'>
+        <div class='stat' layout vertical center>
+          <span class='statName'>{{statNames[idx]}}</span>
+          <span class='statVals' layout horizontal justified>
+            <button charBgColor on-tap='{{buttonTapped}}'>&lt;</button>
+
+            <div highlight?='{{-1 == char.statIndexes[idx]}}'>
+              ✘
+            </div>
+            <template repeat='{{val, i in char.statRanges[idx]}}'>
+              <div highlight?='{{i == char.statIndexes[idx]}}'>
+                {{val}}
+              </div>
+            </template>
+            <button charBgColor on-tap='{{buttonTapped}}'>&gt;</button>
+          </span>
+        </div>
+      </template>
     </div>
   </template>
   <script>
     Polymer('betrayal-house-character-page', {
       computed: {
-        'char': 'character'
+        'char': 'character',
+        'dead': 'isDead(character.statIndexes)'
       },
       statNames: ["Speed", "Might", "Sanity", "Knowledge"],
+      characterChanged: function() {
+        if (this.character && !this.character.statIndexes) {
+          this.character.statIndexes =
+              this.character.initialStatIndexes.slice();
+        }
+      },
       goBack: function() {
-        this.character = null;
+        this.fire('betrayal-go-back')
+        document.body.removeAttribute('dead');
+      },
+      buttonTapped: function(ev, val, elmnt) {
+        var whichStat = elmnt.templateInstance.model.idx;
+        this.character.statIndexes = this.character.statIndexes.slice();
+        var statIndexes = this.character.statIndexes;
+        if (elmnt.textContent.trim() === '<') {
+          statIndexes[whichStat] = Math.max(statIndexes[whichStat] - 1, -1);
+        } else {
+          statIndexes[whichStat]++;
+        }
+      },
+      isDead: function(statIndexes) {
+        if (!statIndexes) {
+          return false;
+        }
+        for (var i = 0; i < statIndexes.length; i++) {
+          if (statIndexes[i] < 0) {
+            return true;
+          }
+        }
+        return false;
+      },
+      deadChanged: function() {
+        if (this.dead) {
+          document.body.setAttribute('dead', 'dead')
+        } else {
+          document.body.removeAttribute('dead')
+        }
       }
     });
   </script>
@@ -175,23 +284,39 @@
 
 <polymer-element name='betrayal-house-app'>
   <template>
-    <template if='{{!character}}'>
-      <betrayal-house-choose-character characters='{{characters}}'
-                                       character='{{character}}'>
-      </betrayal-house-choose-character>
-    </template>
-    <template if='{{character}}'>
-      <betrayal-house-character-page character='{{character}}'>
-      </betrayal-house-character-page>
-    </template>
+    <core-animated-pages transitions="slide-from-right" selected='{{selected}}'>
+      <section>
+        <betrayal-house-choose-character characters='[[characters]]'
+                                         character='{{character}}'>
+        </betrayal-house-choose-character>
+      </section>
+      <section>
+        <betrayal-house-character-page character='{{selectedCharacter}}'
+                                       on-betrayal-go-back='{{goBack}}'>
+        </betrayal-house-character-page>
+      </section>
+    </core-animated-pages>
   </template>
   <script>
     Polymer('betrayal-house-app', {
+      selected: 0,
       created: function() {
-        this.character = this.characters[5]
+      },
+      characterChanged: function() {
+        if (this.character) {
+          this.selectedCharacter = this.character;
+          this.character = null;
+          this.async(function() {
+            this.selected = 1;
+          })
+        }
+      },
+      goBack: function() {
+        this.selected = 0;
       },
       characters: [
         {
+          image: '/images/heather.png',
           name: 'Heather Granville', color: 'purple', birthday: 'August 2nd',
           age: 18, height: "5'2", hobbies: "Television, Shopping",
           weight: 120,
@@ -206,6 +331,7 @@
           ],
         },
         {
+          image: '/images/jenny.png',
           name: 'Jenny LeClerc', color: 'purple', birthday: 'March 4th',
           age: 21, height: "5'7", hobbies: "Reading, Soccer",
           weight: 142,
@@ -220,6 +346,7 @@
           ],
         },
         {
+          image: '/images/peter.png',
           name: 'Peter Akimoto', color: 'green', birthday: 'September 3rd',
           age: 13, height: "4'11", hobbies: "Bugs, Basketball",
           weight: 98,
@@ -234,6 +361,7 @@
           ],
         },
         {
+          image: '/images/brandon.png',
           name: 'Brandon Jaspers', color: 'green', birthday: 'May 21st',
           age: 12, height: "5'1", hobbies: "Computers, Camping, Hockey",
           weight: 109,
@@ -248,6 +376,7 @@
           ],
         },
         {
+          image: '/images/professor.png',
           name: 'Professor Longfellow', color: 'white', birthday: 'July 27th',
           age: 57, height: "5'11", hobbies: "Gaelic Music, Drama, Fine Wines",
           weight: 153,
@@ -262,6 +391,7 @@
           ],
         },
         {
+          image: '/images/father.png',
           name: 'Father Rhinehardt', color: 'white', birthday: 'April 29th',
           age: 62, height: "5'9", hobbies: "Fencing, Gardening",
           weight: 185,
@@ -276,6 +406,7 @@
           ],
         },
         {
+          image: '/images/vivian.png',
           name: 'Vivian Lopez', color: 'blue', birthday: 'January 11th',
           age: 42, height: "5'5", hobbies: "Old Movies, Horses",
           weight: 142,
@@ -290,6 +421,7 @@
           ],
         },
         {
+          image: '/images/madame.png',
           name: 'Madame Zostra', color: 'blue', birthday: 'December 10th',
           age: 37, height: "5'0", hobbies: "Astrology, Cooking, Baseball",
           weight: 150,
@@ -304,6 +436,7 @@
           ],
         },
         {
+          image: '/images/ox.png',
           name: 'Ox Bellows', color: 'red', birthday: 'October 18th',
           age: 23, height: "6'4", hobbies: "Football, Shiny Objects",
           weight: 288,
@@ -318,7 +451,8 @@
           ],
         },
         {
-          name: 'Darren "Flash" Williams', color: 'red', birthday: 'June 6th',
+          image: '/images/darrin.png',
+          name: 'Darrin "Flash" Williams', color: 'red', birthday: 'June 6th',
           age: 20, height: "5'11",
           hobbies: "Track, Music, Shakesperean Literature",
           weight: 188,
@@ -333,6 +467,7 @@
           ],
         },
         {
+          image: '/images/zoe.png',
           name: 'Zoe Ingstrom', color: 'orange', birthday: 'November 5th',
           age: 8, height: "3'9", hobbies: "Dolls, Music",
           weight: 49,
@@ -347,6 +482,7 @@
           ],
         },
         {
+          image: '/images/missy.png',
           name: 'Missy Dubourde', color: 'orange', birthday: 'February 14th',
           age: 9, height: "4'2", hobbies: "Swimming, Medicine",
           weight: 62,
