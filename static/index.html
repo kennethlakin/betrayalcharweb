@@ -195,8 +195,11 @@
       [highlight] {
         color: red;
       }
+      [initial] {
+        border-bottom: 2px solid rgba(255, 255, 255, 0.35);
+      }
       .stat {
-        padding-top: 40px;
+        padding-top: 35px;
       }
       .statVals {
         width: 100%;
@@ -220,6 +223,10 @@
         outline: none;
         border: none;
       }
+      .bonusValue {
+        font-size: 0.5em;
+        color: white;
+      }
     </style>
     <div class='main' charcolor='{{char.color}}' layout vertical justified>
       <div>
@@ -238,8 +245,15 @@
               ✘
             </div>
             <template repeat='{{val, i in char.statRanges[idx]}}'>
-              <div highlight?='{{i == char.statIndexes[idx]}}'>
+              <div highlight?='{{i == char.statIndexes[idx]}}'
+                   initial?='{{i == char.initialStatIndexes[idx]}}'>
                 {{val}}
+                <template if='{{i ===7}}'>
+                  <sup class='bonusValue'
+                       hidden?='{{char.statBonusValue[idx] == 0}}'>
+                    [{{char.statBonusValue[idx]}}]
+                  </div>
+                </template>
               </div>
             </template>
             <button charBgColor on-tap='{{buttonTapped}}'>&gt;</button>
@@ -254,12 +268,39 @@
         'char': 'character',
         'dead': 'isDead(character.statIndexes)'
       },
+      observe: {
+        'character.statIndexes character.statBonusValue': 'saveToStorage'
+      },
       statNames: ["Speed", "Might", "Sanity", "Knowledge"],
-      characterChanged: function() {
-        if (this.character && !this.character.statIndexes) {
-          this.character.statIndexes =
-              this.character.initialStatIndexes.slice();
+      created: function() {
+        this.storage =
+            window.localStorage['betrayal-house-character-page-storage'];
+        try {
+          this.storage = JSON.parse(this.storage || '{}');
+        } catch(_) {
+          this.storage = {};
         }
+      },
+      saveToStorage: function() {
+        if (this.character && this.character.statIndexes) {
+          this.storage[this.character.name] = {
+            statIndexes: this.character.statIndexes,
+            statBonusValue: this.character.statBonusValue
+          };
+          window.localStorage['betrayal-house-character-page-storage'] =
+              JSON.stringify(this.storage);
+        }
+      },
+      characterChanged: function() {
+        if (!(this.character.name in this.storage)) {
+          this.storage[this.character.name] = {
+            statIndexes: this.character.initialStatIndexes.slice(),
+            statBonusValue: [0, 0, 0, 0]
+          }
+        }
+        var characterStorage = this.storage[this.character.name];
+        this.character.statIndexes = characterStorage.statIndexes;
+        this.character.statBonusValue = characterStorage.statBonusValue;
       },
       goBack: function() {
         this.fire('betrayal-go-back')
@@ -268,11 +309,20 @@
       buttonTapped: function(ev, val, elmnt) {
         var whichStat = elmnt.templateInstance.model.idx;
         this.character.statIndexes = this.character.statIndexes.slice();
+        this.character.statBonusValue = this.character.statBonusValue.slice();
         var statIndexes = this.character.statIndexes;
         if (elmnt.textContent.trim() === '<') {
-          statIndexes[whichStat] = Math.max(statIndexes[whichStat] - 1, -1);
+          if (this.character.statBonusValue[whichStat] > 0) {
+            this.character.statBonusValue[whichStat]--;
+          } else {
+            statIndexes[whichStat] = Math.max(statIndexes[whichStat] - 1, -1);
+          }
         } else {
-          statIndexes[whichStat]++;
+          if (statIndexes[whichStat] == 7) {
+            this.character.statBonusValue[whichStat]++;
+          } else {
+            statIndexes[whichStat]++;
+          }
         }
       },
       isDead: function(statIndexes) {
