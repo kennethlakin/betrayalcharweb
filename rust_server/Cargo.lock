@@ -1,0 +1,93 @@
+[root]
+name = "rust_server"
+version = "0.0.1"
+dependencies = [
+ "hyper 0.0.1 (git+https://github.com/hyperium/hyper.git)",
+]
+
+[[package]]
+name = "cookie"
+version = "0.0.1"
+source = "git+https://github.com/alexcrichton/cookie-rs#cbeb942c35bc130e578725ab829ff3cb976a7c92"
+dependencies = [
+ "openssl 0.0.2 (git+https://github.com/sfackler/rust-openssl)",
+ "time 0.0.3 (git+https://github.com/rust-lang/time)",
+ "url 0.1.0 (git+https://github.com/servo/rust-url)",
+]
+
+[[package]]
+name = "gcc"
+version = "0.0.2"
+source = "git+https://github.com/alexcrichton/gcc-rs#903e8f8a2e3766ad3d514404d452dbaa1d3b2d79"
+
+[[package]]
+name = "hyper"
+version = "0.0.1"
+source = "git+https://github.com/hyperium/hyper.git#b1684ff027d5150f087a39840e9db1c5b0d8d2f1"
+dependencies = [
+ "cookie 0.0.1 (git+https://github.com/alexcrichton/cookie-rs)",
+ "mime 0.0.1 (git+https://github.com/hyperium/mime.rs)",
+ "openssl 0.0.2 (git+https://github.com/sfackler/rust-openssl)",
+ "time 0.0.3 (git+https://github.com/rust-lang/time)",
+ "unsafe-any 0.1.0 (git+https://github.com/reem/rust-unsafe-any)",
+ "url 0.1.0 (git+https://github.com/servo/rust-url)",
+]
+
+[[package]]
+name = "libressl-pnacl-sys"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "pnacl-build-helper 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "mime"
+version = "0.0.1"
+source = "git+https://github.com/hyperium/mime.rs#7898f1c29c7f5d35d0c3c7aed37ebcfc95a40873"
+
+[[package]]
+name = "openssl"
+version = "0.0.2"
+source = "git+https://github.com/sfackler/rust-openssl#f71555e8207fef6ba6f6090078309ca9bbe3a51d"
+dependencies = [
+ "libressl-pnacl-sys 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "openssl-sys 0.0.2 (git+https://github.com/sfackler/rust-openssl)",
+]
+
+[[package]]
+name = "openssl-sys"
+version = "0.0.2"
+source = "git+https://github.com/sfackler/rust-openssl#f71555e8207fef6ba6f6090078309ca9bbe3a51d"
+dependencies = [
+ "pkg-config 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "pkg-config"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "pnacl-build-helper"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "time"
+version = "0.0.3"
+source = "git+https://github.com/rust-lang/time#533d3823dbe200aaa2a2599176a6b30579581232"
+dependencies = [
+ "gcc 0.0.2 (git+https://github.com/alexcrichton/gcc-rs)",
+]
+
+[[package]]
+name = "unsafe-any"
+version = "0.1.0"
+source = "git+https://github.com/reem/rust-unsafe-any#d26b0533ad834a93567cdada0c5894a64dfc9fcf"
+
+[[package]]
+name = "url"
+version = "0.1.0"
+source = "git+https://github.com/servo/rust-url#46458f80e48c542b2f175e36e5b7d30782ca7dc5"
+

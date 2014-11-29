@@ -1,1 +1,3 @@
 static/bower_components
+static/raw_images
+rust_server/target

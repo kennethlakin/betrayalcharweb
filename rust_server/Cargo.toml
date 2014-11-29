@@ -1,0 +1,9 @@
+[package]
+
+name = "rust_server"
+version = "0.0.1"
+authors = ["Peter Burns <rictic@google.com>"]
+
+[dependencies.hyper]
+
+git = "https://github.com/hyperium/hyper.git"
