@@ -1,81 +1,41 @@
+extern crate url;
 extern crate hyper;
 extern crate serialize;
 
-use std::sync::{Mutex};
-use std::collections::HashSet;
-use serialize::json;
-use std::rand;
-use std::io::net::ip::Ipv4Addr;
-// use hyper::{Get, Post};
-use hyper::server::{Request, Response};
+extern crate mime;
+extern crate getopts;
 
-#[deriving(Encodable)]
-pub struct CreateRoomResponse  {
-    room_code: String,
-}
+use getopts::{optflag,getopts};
+use std::os;
+use std::io::net::ip::IpAddr;
 
-pub struct BetrayalServer {
-    active_rooms: Mutex<HashSet<String>>,
-}
+use betrayal_server::BetrayalServer;
 
-impl BetrayalServer {
-    fn new() -> BetrayalServer {
-        BetrayalServer {
-            active_rooms: Mutex::new(HashSet::new()),
-        }
-    }
-    fn handle_create_room(&self, _: Request) -> &[u8] {
-        let encoded = json::encode(&CreateRoomResponse {
-            room_code: self.get_unique_room_name(),
-        });
-        encoded.as_bytes().clone()
-    }
-    fn get_unique_room_name(&self) -> String {
-        let mut size : uint = 1;
-        let mut active_rooms = self.active_rooms.lock();
-
-        loop {
-            for _ in range(0u, 10u) {
-                let candidate = generate_room_name(size);
-                if !active_rooms.contains(&candidate) {
-                    active_rooms.insert(candidate.clone());
-                    return candidate;
-                }
-            }
-            size += 1;
-        }
-
-    }
-}
-
-impl hyper::server::Handler for BetrayalServer {
-    fn handle(&self, req: Request, mut res: Response) {
-        *res.status_mut() = hyper::status::Ok;
-        let r = res.start();
-        if r.is_err() {
-            return; // Lost the connection, no worries though.
-        }
-        let mut res = r.unwrap();
-
-        let _ = res.write(self.handle_create_room(req));
-
-        let _ = res.end();
-    }
-}
-
-fn generate_room_name(len : uint) -> String {
-    let letters = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"];
-
-    let mut s = "".to_string();
-    for _ in range(0, len) {
-        s.push_str(letters[rand::random::<uint>() % letters.len()]);
-    }
-
-    return s
-}
+mod betrayal_server;
+mod game_data;
 
 
 fn main() {
-    let server = hyper::server::Server::http(Ipv4Addr(127, 0, 0, 1), 1337);
-    server.listen(BetrayalServer::new()).unwrap();
+    let opts = &[
+        optflag("a", "address", "set the address to listen on"),
+        optflag("p", "port", "set the port to listen on")
+    ];
+
+    let matches = match getopts(os::args().tail(), opts) {
+        Ok(m) => m,
+        Err(f) => panic!(f.to_string()),
+    };
+    let addr_str = matches.opt_str("a").unwrap_or("127.0.0.1".to_string());
+    let addr : IpAddr = match from_str(addr_str.as_slice()) {
+        Some(a) => a,
+        None => panic!("Unable to parse address"),
+    };
+    let port = match from_str(matches.opt_str("p").unwrap_or("1337".to_string()).as_slice()) {
+        Some(p) => p,
+        None => panic!("Unable to parse port"),
+    };
+
+    let betrayal_server = BetrayalServer::new();
+    hyper::server::Server::http(addr, port).listen(betrayal_server).unwrap();
 }
+
