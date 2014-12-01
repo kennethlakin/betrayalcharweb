@@ -5,6 +5,7 @@ use serialize::{Encodable, Decodable, json};
 use serialize::json::{Encoder, Decoder, DecoderError};
 use hyper::method::Method::{Get, Post};
 use hyper::client::{Request};
+use hyper::status;
 use hyper;
 
 use game_data::{Color};
@@ -14,6 +15,7 @@ use betrayal_server::{
     JoinRoomRequest, JoinRoomResponse,
     ListRoomRequest, ListRoomResponse,
     PickColorRequest, PickColorResponse,
+    KickPlayerRequest, KickPlayerResponse,
 };
 
 struct TestServer {
@@ -70,8 +72,10 @@ impl TestServer {
         let req = self.make_request(Post, path);
         let mut stream = req.start().unwrap();
         stream.write(json::encode(request).as_bytes()).unwrap();
-        let res = stream.send().unwrap().read_to_string().unwrap();
-        json::decode(res.as_slice()).unwrap()
+        let mut result = stream.send().unwrap();
+        assert_eq!(status::Ok, result.status);
+        let body = result.read_to_string().unwrap();
+        json::decode(body.as_slice()).unwrap()
     }
 }
 
@@ -129,6 +133,66 @@ fn update_color() {
     let ts = TestServer::new();
 
     let resp : CreateRoomResponse = ts.do_request("/api/create_room");
+    let room_code = resp.room_code;
+    let lrr : ListRoomResponse = ts.post_request(
+        "/api/list_room", &ListRoomRequest {
+            room_code: room_code.clone()
+        }
+    );
+    assert_eq!(0, lrr.players.len());
+    let _ : JoinRoomResponse = ts.post_request(
+        "/api/join_room", &JoinRoomRequest {
+            room_code: room_code.clone(),
+            name: "Test User".to_string(),
+        }
+    );
+
+    let _ : PickColorResponse = ts.post_request(
+        "/api/pick_color", &PickColorRequest {
+            room_code: room_code.clone(),
+            name: "Test User".to_string(),
+            color: Color::Red
+        }
+    );
+
+    let lrr : ListRoomResponse = ts.post_request(
+        "/api/list_room", &ListRoomRequest {
+            room_code: room_code.clone()
+        }
+    );
+    assert_eq!(1, lrr.players.len());
+    assert_eq!(Some(Color::Red), lrr.players[0].color);
+
+    let _ : JoinRoomResponse = ts.post_request(
+        "/api/join_room", &JoinRoomRequest {
+            room_code: room_code.clone(),
+            name: "JoeBob".to_string(),
+        }
+    );
+    let lrr : ListRoomResponse = ts.post_request(
+        "/api/list_room", &ListRoomRequest {
+            room_code: room_code.clone()
+        }
+    );
+    assert_eq!(2, lrr.players.len());
+
+    let r = ts.make_request(Post, "/api/pick_color");
+    let mut stream = r.start().unwrap();
+    let request = &PickColorRequest {
+        name: "JoeBob".to_string(),
+        room_code: room_code.clone(),
+        color: Color::Red
+    };
+    stream.write(json::encode(request).as_bytes()).unwrap();
+    let result = stream.send().unwrap();
+    assert_eq!(status::BadRequest, result.status);
+}
+
+#[test]
+fn kick_player() {
+    let ts = TestServer::new();
+
+    let resp : CreateRoomResponse = ts.do_request("/api/create_room");
     let lrr : ListRoomResponse = ts.post_request(
         "/api/list_room", &ListRoomRequest {
             room_code: resp.room_code.clone()
@@ -142,19 +206,23 @@ fn update_color() {
         }
     );
 
-    let _ : PickColorResponse = ts.post_request(
-        "/api/pick_color", &PickColorRequest {
-            room_code: resp.room_code.clone(),
-            name: "Test User".to_string(),
-            color: Color::Red
-        }
-    );
-
     let lrr : ListRoomResponse = ts.post_request(
         "/api/list_room", &ListRoomRequest {
             room_code: resp.room_code.clone()
         }
     );
     assert_eq!(1, lrr.players.len());
-    assert_eq!(Some(Color::Red), lrr.players[0].color);
+
+    let _ : KickPlayerResponse = ts.post_request(
+        "/api/kick_player", &KickPlayerRequest {
+            room_code: resp.room_code.clone(),
+            to_kick: "Test User".to_string(),
+        });
+
+    let lrr : ListRoomResponse = ts.post_request(
+        "/api/list_room", &ListRoomRequest {
+            room_code: resp.room_code.clone()
+        }
+    );
+    assert_eq!(0, lrr.players.len());
 }

@@ -52,6 +52,15 @@ pub struct PickColorRequest {
 #[deriving(Encodable, Decodable)]
 pub struct PickColorResponse;
 
+#[deriving(Decodable, Encodable)]
+pub struct KickPlayerRequest {
+    pub room_code: String,
+    pub to_kick: String,
+}
+
+#[deriving(Encodable, Decodable)]
+pub struct KickPlayerResponse;
+
 pub struct BetrayalServer {
     active_rooms: Mutex<HashMap<String, Mutex<Room>>>,
 }
@@ -156,6 +165,12 @@ impl BetrayalServer {
                 "Room not found", status::NotFound, res),
         }.lock();
         let mut player : Option<&mut Player> = None;
+        for p in room.players.iter() {
+            if p.color == Some(req.color) {
+                return self.write_out("Someone else already has that color",
+                    status::BadRequest, res);
+            }
+        }
         for p in room.players.iter_mut() {
             if p.name == req.name {
                 player = Some(p);
@@ -169,6 +184,33 @@ impl BetrayalServer {
         };
         player.color = Some(req.color);
         self.respond_with(res, &PickColorResponse)
+    }
+
+    fn kick_player(&self, req : Request, res : Response) -> Result<(), &str> {
+        let maybe_req = self.read_json_post::<KickPlayerRequest>(req);
+        let req = match maybe_req {
+            Ok(ref r) => r,
+            Err(ref e) => return self.write_out(e.desc, status::BadRequest, res)
+        };
+        let rooms = self.active_rooms.lock();
+        let mut room = match rooms.get(&req.room_code) {
+            Some(room) => room,
+            None => return self.write_out(
+                "Room not found", status::NotFound, res),
+        }.lock();
+        let mut player_index : Option<uint> = None;
+        for (idx, p) in room.players.iter().enumerate() {
+            if p.name == req.to_kick {
+                player_index = Some(idx);
+                break;
+            }
+        }
+        match player_index {
+            None => return self.write_out(
+                "Player not found", status::NotFound, res),
+            Some(idx) => room.players.remove(idx).unwrap()
+        };
+        self.respond_with(res, &KickPlayerResponse)
     }
 
     fn respond_with<'a, T: Encodable<Encoder<'a>, io::IoError>>(
@@ -210,8 +252,7 @@ impl hyper::server::Handler for BetrayalServer {
                     "/api/join_room" => self.join_room(req, res),
                     "/api/list_room" => self.list_room(req, res),
                     "/api/pick_color" => self.pick_color(req, res),
-                    "/api/kick_player" => self.write_out(
-                        "Not implemented\n", status::NotImplemented, res),
+                    "/api/kick_player" => self.kick_player(req, res),
                     "/api/set_stats" => self.write_out(
                         "Not implemented\n", status::NotImplemented, res),
                     _ => self.write_out("Not found\n", status::NotFound, res),
