@@ -8,7 +8,7 @@ use hyper::client::{Request};
 use hyper::status;
 use hyper;
 
-use game_data::{Color};
+use game_data::{Color, Player};
 use betrayal_server::{
     BetrayalServer,
     CreateRoomResponse,
@@ -77,6 +77,39 @@ impl TestServer {
         let body = result.read_to_string().unwrap();
         json::decode(body.as_slice()).unwrap()
     }
+
+    fn create_room(&self) -> String {
+        let resp : CreateRoomResponse = self.do_request("/api/create_room");
+        resp.room_code
+    }
+
+    fn list_players(&self, room_code: String) -> Box<Vec<Player>> {
+        let lrr : ListRoomResponse = self.post_request(
+            "/api/list_room", &ListRoomRequest {
+                room_code: room_code
+            }
+        );
+        box lrr.players
+    }
+
+    fn join_room(&self, room_code: String, name: &str) {
+        let _ : JoinRoomResponse = self.post_request(
+            "/api/join_room", &JoinRoomRequest {
+                room_code: room_code,
+                name: name.to_string(),
+            }
+        );
+    }
+
+    fn kick_player(&self, room_code: String, to_kick: &str) {
+        let _ : KickPlayerResponse = self.post_request(
+            "/api/kick_player", &KickPlayerRequest {
+                room_code: room_code,
+                to_kick: to_kick.to_string(),
+            }
+        );
+    }
+
 }
 
 impl Drop for TestServer {
@@ -90,9 +123,9 @@ fn create_room_returns_unique_codes() {
     let ts = TestServer::new();
     let mut hs = HashSet::new();
     for _ in range(0, 100u) {
-        let resp : CreateRoomResponse = ts.do_request("/api/create_room");
-        assert_eq!(false, hs.contains(&resp.room_code));
-        hs.insert(resp.room_code);
+        let room_code = ts.create_room();
+        assert_eq!(false, hs.contains(&room_code));
+        hs.insert(room_code);
     }
 }
 
@@ -100,52 +133,23 @@ fn create_room_returns_unique_codes() {
 fn join_room_works() {
     let ts = TestServer::new();
 
-    let resp : CreateRoomResponse = ts.do_request("/api/create_room");
-    let lrr : ListRoomResponse = ts.post_request(
-        "/api/list_room", &ListRoomRequest {
-            room_code: resp.room_code.clone()
-        }
-    );
-    assert_eq!(0, lrr.players.len());
-    let _ : JoinRoomResponse = ts.post_request(
-        "/api/join_room", &JoinRoomRequest {
-            room_code: resp.room_code.clone(),
-            name: "Test User".to_string(),
-        }
-    );
+    let room_code = ts.create_room();
+    assert_eq!(0, ts.list_players(room_code.clone()).len());
+    ts.join_room(room_code.clone(), "Test User");
 
-    let lrr : ListRoomResponse = ts.post_request(
-        "/api/list_room", &ListRoomRequest {
-            room_code: resp.room_code.clone()
-        }
-    );
-    assert_eq!(1, lrr.players.len());
-    assert_eq!("Test User".to_string(), lrr.players[0].name);
-    match lrr.players[0].color {
-        None => (),
-        Some(_) => panic!("Player shouldn't start with a color."),
-    }
-    assert_eq!(None, lrr.players[0].color);
+    let players = ts.list_players(room_code.clone());
+    assert_eq!(1, players.len());
+    assert_eq!("Test User".to_string(), players[0].name);
+    assert_eq!(None, players[0].color);
 }
 
 #[test]
 fn update_color() {
     let ts = TestServer::new();
 
-    let resp : CreateRoomResponse = ts.do_request("/api/create_room");
-    let room_code = resp.room_code;
-    let lrr : ListRoomResponse = ts.post_request(
-        "/api/list_room", &ListRoomRequest {
-            room_code: room_code.clone()
-        }
-    );
-    assert_eq!(0, lrr.players.len());
-    let _ : JoinRoomResponse = ts.post_request(
-        "/api/join_room", &JoinRoomRequest {
-            room_code: room_code.clone(),
-            name: "Test User".to_string(),
-        }
-    );
+    let room_code = ts.create_room();
+    assert_eq!(0, ts.list_players(room_code.clone()).len());
+    ts.join_room(room_code.clone(), "Test User");
 
     let _ : PickColorResponse = ts.post_request(
         "/api/pick_color", &PickColorRequest {
@@ -155,26 +159,12 @@ fn update_color() {
         }
     );
 
-    let lrr : ListRoomResponse = ts.post_request(
-        "/api/list_room", &ListRoomRequest {
-            room_code: room_code.clone()
-        }
-    );
-    assert_eq!(1, lrr.players.len());
-    assert_eq!(Some(Color::Red), lrr.players[0].color);
+    let players = ts.list_players(room_code.clone());
+    assert_eq!(1, players.len());
+    assert_eq!(Some(Color::Red), players[0].color);
 
-    let _ : JoinRoomResponse = ts.post_request(
-        "/api/join_room", &JoinRoomRequest {
-            room_code: room_code.clone(),
-            name: "JoeBob".to_string(),
-        }
-    );
-    let lrr : ListRoomResponse = ts.post_request(
-        "/api/list_room", &ListRoomRequest {
-            room_code: room_code.clone()
-        }
-    );
-    assert_eq!(2, lrr.players.len());
+    ts.join_room(room_code.clone(), "JoeBob");
+    assert_eq!(2, ts.list_players(room_code.clone()).len());
 
     let r = ts.make_request(Post, "/api/pick_color");
     let mut stream = r.start().unwrap();
@@ -192,37 +182,10 @@ fn update_color() {
 fn kick_player() {
     let ts = TestServer::new();
 
-    let resp : CreateRoomResponse = ts.do_request("/api/create_room");
-    let lrr : ListRoomResponse = ts.post_request(
-        "/api/list_room", &ListRoomRequest {
-            room_code: resp.room_code.clone()
-        }
-    );
-    assert_eq!(0, lrr.players.len());
-    let _ : JoinRoomResponse = ts.post_request(
-        "/api/join_room", &JoinRoomRequest {
-            room_code: resp.room_code.clone(),
-            name: "Test User".to_string(),
-        }
-    );
-
-    let lrr : ListRoomResponse = ts.post_request(
-        "/api/list_room", &ListRoomRequest {
-            room_code: resp.room_code.clone()
-        }
-    );
-    assert_eq!(1, lrr.players.len());
-
-    let _ : KickPlayerResponse = ts.post_request(
-        "/api/kick_player", &KickPlayerRequest {
-            room_code: resp.room_code.clone(),
-            to_kick: "Test User".to_string(),
-        });
-
-    let lrr : ListRoomResponse = ts.post_request(
-        "/api/list_room", &ListRoomRequest {
-            room_code: resp.room_code.clone()
-        }
-    );
-    assert_eq!(0, lrr.players.len());
+    let room_code = ts.create_room();
+    assert_eq!(0, ts.list_players(room_code.clone()).len());
+    ts.join_room(room_code.clone(), "Test User");
+    assert_eq!(1, ts.list_players(room_code.clone()).len());
+    ts.kick_player(room_code.clone(), "Test User");
+    assert_eq!(0, ts.list_players(room_code.clone()).len());
 }
