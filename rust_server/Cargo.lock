@@ -8,37 +8,29 @@ dependencies = [
 [[package]]
 name = "cookie"
 version = "0.0.1"
-source = "git+https://github.com/alexcrichton/cookie-rs#cbeb942c35bc130e578725ab829ff3cb976a7c92"
+source = "git+https://github.com/alexcrichton/cookie-rs#2468d5cf1b84c7778839c3c0024cd84871d978ec"
 dependencies = [
- "openssl 0.0.2 (git+https://github.com/sfackler/rust-openssl)",
- "time 0.0.3 (git+https://github.com/rust-lang/time)",
+ "openssl 0.2.1 (git+https://github.com/sfackler/rust-openssl)",
+ "time 0.1.0 (git+https://github.com/rust-lang/time)",
  "url 0.1.0 (git+https://github.com/servo/rust-url)",
 ]
 
 [[package]]
 name = "gcc"
-version = "0.0.2"
-source = "git+https://github.com/alexcrichton/gcc-rs#903e8f8a2e3766ad3d514404d452dbaa1d3b2d79"
+version = "0.1.0"
+source = "git+https://github.com/alexcrichton/gcc-rs#96c9e44ce3dfccc47c16fcfd743a33b3b4205daf"
 
 [[package]]
 name = "hyper"
 version = "0.0.1"
-source = "git+https://github.com/hyperium/hyper.git#b1684ff027d5150f087a39840e9db1c5b0d8d2f1"
+source = "git+https://github.com/hyperium/hyper.git#b1761ad4e1bce98deb73827df5b134b141c574d5"
 dependencies = [
  "cookie 0.0.1 (git+https://github.com/alexcrichton/cookie-rs)",
  "mime 0.0.1 (git+https://github.com/hyperium/mime.rs)",
- "openssl 0.0.2 (git+https://github.com/sfackler/rust-openssl)",
- "time 0.0.3 (git+https://github.com/rust-lang/time)",
- "unsafe-any 0.1.0 (git+https://github.com/reem/rust-unsafe-any)",
+ "openssl 0.2.1 (git+https://github.com/sfackler/rust-openssl)",
+ "time 0.1.0 (git+https://github.com/rust-lang/time)",
+ "unsafe-any 0.1.1 (git+https://github.com/reem/rust-unsafe-any)",
  "url 0.1.0 (git+https://github.com/servo/rust-url)",
-]
-
-[[package]]
-name = "libressl-pnacl-sys"
-version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "pnacl-build-helper 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -48,46 +40,40 @@ source = "git+https://github.com/hyperium/mime.rs#7898f1c29c7f5d35d0c3c7aed37ebc
 
 [[package]]
 name = "openssl"
-version = "0.0.2"
-source = "git+https://github.com/sfackler/rust-openssl#f71555e8207fef6ba6f6090078309ca9bbe3a51d"
+version = "0.2.1"
+source = "git+https://github.com/sfackler/rust-openssl#c3603b0db00d044c8332d39dd9d49e3c76a2a978"
 dependencies = [
- "libressl-pnacl-sys 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "openssl-sys 0.0.2 (git+https://github.com/sfackler/rust-openssl)",
+ "openssl-sys 0.2.1 (git+https://github.com/sfackler/rust-openssl)",
 ]
 
 [[package]]
 name = "openssl-sys"
-version = "0.0.2"
-source = "git+https://github.com/sfackler/rust-openssl#f71555e8207fef6ba6f6090078309ca9bbe3a51d"
+version = "0.2.1"
+source = "git+https://github.com/sfackler/rust-openssl#c3603b0db00d044c8332d39dd9d49e3c76a2a978"
 dependencies = [
- "pkg-config 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pkg-config 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "pkg-config"
-version = "0.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-name = "pnacl-build-helper"
-version = "1.0.0"
+version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "time"
-version = "0.0.3"
-source = "git+https://github.com/rust-lang/time#533d3823dbe200aaa2a2599176a6b30579581232"
+version = "0.1.0"
+source = "git+https://github.com/rust-lang/time#afab521f3b91658a3ba2d3e877b7e01699733bef"
 dependencies = [
- "gcc 0.0.2 (git+https://github.com/alexcrichton/gcc-rs)",
+ "gcc 0.1.0 (git+https://github.com/alexcrichton/gcc-rs)",
 ]
 
 [[package]]
 name = "unsafe-any"
-version = "0.1.0"
-source = "git+https://github.com/reem/rust-unsafe-any#d26b0533ad834a93567cdada0c5894a64dfc9fcf"
+version = "0.1.1"
+source = "git+https://github.com/reem/rust-unsafe-any#eb3fe87bea85f375b8fcefa0cdecfd131fae9624"
 
 [[package]]
 name = "url"
 version = "0.1.0"
-source = "git+https://github.com/servo/rust-url#46458f80e48c542b2f175e36e5b7d30782ca7dc5"
+source = "git+https://github.com/servo/rust-url#9f05a0108025a1c9002e8977a42dce764895d170"
 

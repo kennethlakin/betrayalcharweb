@@ -18,32 +18,35 @@ use hyper::status;
 use hyper::uri;
 use mime::{Mime};
 
+#[deriving(Encodable, Decodable)]
+pub struct CreateRoomResponse  {
+    pub room_code: String,
+}
+
+#[deriving(Decodable, Encodable)]
+pub struct JoinRoomRequest {
+    pub name : String,
+    pub room_code: String
+}
+
+#[deriving(Encodable, Decodable)]
+pub struct JoinRoomResponse;
+
+#[deriving(Decodable)]
+pub struct ListRoomRequest {
+    pub room_code: String
+}
+
 #[deriving(Encodable)]
-struct CreateRoomResponse  {
-    room_code: String,
+pub struct ListRoomResponse {
+    pub players: Vec<Player>
 }
 
 #[deriving(Decodable)]
-struct JoinRoomRequest {
-    name : String,
-    room_code: String
-}
-
-#[deriving(Decodable)]
-struct ListRoomRequest {
-    room_code: String
-}
-
-#[deriving(Encodable)]
-struct ListRoomResponse {
-    players: Vec<Player>
-}
-
-#[deriving(Decodable)]
-struct PickColorRequest {
-    room_code: String,
-    name: String,
-    color: Color,
+pub struct PickColorRequest {
+    pub room_code: String,
+    pub name: String,
+    pub color: Color,
 }
 
 pub struct BetrayalServer {
@@ -118,7 +121,7 @@ impl BetrayalServer {
         room.players.push(player);
 
         println!("Players in room {} - {}", req.room_code, room.players);
-        self.write_out("Ok!", status::Ok, res)
+        self.respond_with(res, &JoinRoomResponse)
     }
 
     fn list_room(&self,
@@ -203,7 +206,11 @@ impl hyper::server::Handler for BetrayalServer {
                     "/api/join_room" => self.join_room(req, res),
                     "/api/list_room" => self.list_room(req, res),
                     "/api/pick_color" => self.pick_color(req, res),
-                    _ => self.write_out("Not found\n", status::NotFound, res)
+                    "/api/kick_player" => self.write_out(
+                        "Not implemented\n", status::NotImplemented, res),
+                    "/api/set_stats" => self.write_out(
+                        "Not implemented\n", status::NotImplemented, res),
+                    _ => self.write_out("Not found\n", status::NotFound, res),
                 };
                 if handled.is_err() {
                     println!("Error handling request - {}", handled);
