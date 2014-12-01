@@ -8,18 +8,7 @@
         ]).
 
 -include("gameRecord.hrl").
--record(qsRec, {
-          action::binary()|atom(),
-          gameid::binary()|atom(),
-          playerid::binary()|atom(),
-          playername::binary()|atom(),
-          color::binary()|atom(),
-          variant::binary()|atom(),
-          speed::binary()|atom(),
-          might::binary()|atom(),
-          sanity::binary()|atom(),
-          knowledge::binary()|atom()
-         }).
+-include("querystringRecord.hrl").
 
 setRec(Rec, Cat, Val) when Cat==action-> Rec#qsRec{action = Val};
 setRec(Rec, Cat, Val) when Cat==gameid -> Rec#qsRec{gameid = Val};
@@ -67,7 +56,7 @@ generateGameID() ->
     ]
    ).
 
-%Generate upper-case alphanumeric Game IDs.
+%Generate upper-case alphanumeric Player IDs.
 generatePlayerID() ->
   seedRandom(),
   list_to_binary(
@@ -146,16 +135,11 @@ addPlayer(GameID, Args) ->
       addPlayer(GameID, Args)
   end.
 
-
-init(_, Req, Opts) ->
-  Req2 = handle(Req, Opts),
-  {ok, Req2, Opts}.
-
-processDelete(Acc, Args) when Args#qsRec.action == <<"kickplayer">> ->
+processDelete(Args) when Args#qsRec.action == <<"kickplayer">> ->
   PlayerID=Args#qsRec.playerid,
   GameID=Args#qsRec.gameid,
   Key=concatIDs(GameID, PlayerID),
-  Ret=case findGame(GameID) of
+  case findGame(GameID) of
     {ok, GameRec} ->
       case findPlayer(GameID, PlayerID) of
         {ok, _} ->
@@ -171,60 +155,66 @@ processDelete(Acc, Args) when Args#qsRec.action == <<"kickplayer">> ->
                               UpdatedGame=
                               Game#gamerec{
                                 players=UpdatedPlayerList},
-                              error_logger:info_msg("Game ~p~n", [Game]),
-                              error_logger:info_msg("UpdatedGame ~p~n", [UpdatedGame]),
                               mnesia:write({games, GameID, UpdatedGame}),
                               mnesia:delete({players, Key})
                           end
                          ),
-          <<"Player Deleted">>;
+          jiffy:encode(<<"ok">>);
         not_found ->
-          <<"Did not find player">>
+          jiffy:encode({[{error, <<"player_not_found">>}]})
       end;
     not_found ->
-      <<"Did not find game">>
-  end,
-  <<Acc/binary, " ", Ret/binary>>.
+      jiffy:encode({[{error, <<"game_not_found">>}]})
+  end.
 
-processGet(Acc, Args) when Args#qsRec.action == <<"getplayers">> ->
+processGet(Args) when Args#qsRec.action == <<"getplayers">> ->
   GameID=Args#qsRec.gameid,
   case findGame(GameID) of
-    {ok, GameRec} ->
-      GameRecBinary=term_to_binary(GameRec),
-      <<Acc/binary, " ", GameRecBinary/binary>>;
+    {ok, GameDBRec} ->
+      %Iterate over players in game.
+      GameRec=element(3, GameDBRec),
+      Players=GameRec#gamerec.players,
+      PlayerArr=[lists:foldl(fun (Player, A) -> 
+                                lists:append([
+                                              {[{name, Player#playerrec.player#player.name}]},
+                                              {[{id, Player#playerrec.id}]}
+                                             ], A)
+                            end,
+                            [], Players)],
+      Ret=lists:append([{[{gameid, GameRec#gamerec.gameid}]}], PlayerArr),
+      jiffy:encode(Ret);
     not_found ->
-      <<Acc/binary, " Game Not Found">>
+      jiffy:encode({[{error, <<"game_not_found">>}]})
   end;
 
-processGet(Acc, Args) when Args#qsRec.action == <<"getgame">> ->
+processGet(Args) when Args#qsRec.action == <<"getgame">> ->
   GameID=Args#qsRec.gameid,
   case findGame(GameID) of
     {ok, Game} ->
       GameBinary=term_to_binary(Game),
-      <<Acc/binary, " ", GameBinary/binary>>;
+      <<GameBinary/binary>>;
     not_found ->
-      <<Acc/binary, " Game Not Found">>
+      jiffy:encode({[{error, <<"game_not_found">>}]})
   end.
 
-processPost(Acc, Args) when Args#qsRec.action == <<"creategame">> ->
+processPost(Args) when Args#qsRec.action == <<"creategame">> ->
   GameID=createGame(),
-  <<Acc/binary, GameID/binary>>;
+  jiffy:encode({[{room_code, GameID}]});
 
-processPost(Acc, Args) when Args#qsRec.action == <<"addplayer">> ->
+processPost(Args) when Args#qsRec.action == <<"addplayer">> ->
   GameID=Args#qsRec.gameid,
-  Ret=case findGame(GameID) of
+  case findGame(GameID) of
     {ok, _} ->
       {ok, PlayerID} = addPlayer(GameID, Args),
-      term_to_binary(PlayerID);
+      jiffy:encode({[{gameid, GameID}, {playerid, PlayerID}]});
     not_found ->
-      term_to_binary("Game not Found")
-  end,
-  <<Acc/binary, " ", GameID/binary, " ", Ret/binary>>;
+      jiffy:encode({[{error, <<"game_not_found">>}]})
+  end;
 
-processPost(Acc, Args) when Args#qsRec.action == <<"setcolor">> ->
+processPost(Args) when Args#qsRec.action == <<"setcolor">> ->
   GameID=Args#qsRec.gameid,
   PlayerID=Args#qsRec.playerid,
-  Ret=case findPlayer(GameID, PlayerID) of
+  case findPlayer(GameID, PlayerID) of
     {ok, PlayerDBRec} ->
       {atomic, _} = mnesia:transaction(
                       fun() -> 
@@ -240,21 +230,18 @@ processPost(Acc, Args) when Args#qsRec.action == <<"setcolor">> ->
                           UpdatedPlayer=Player#player{character=UpdatedCharacter},
                           UpdatedPlayerRec=PlayerRec#playerrec{player=UpdatedPlayer},
 
-                          error_logger:info_msg("PlayerRec ~p", [PlayerRec]),
-                          error_logger:info_msg("UpdatedPlayerRec ~p", [UpdatedPlayerRec]),
                           PlayerKey=element(2, PlayerDBRec),
                           mnesia:write({players, PlayerKey, UpdatedPlayerRec})
                       end),
-      term_to_binary("Player updated");
+      jiffy:encode(<<"ok">>);
     not_found ->
-      term_to_binary("Player not found")
-  end,
-  <<Acc/binary, " ", Ret/binary>>;
+      jiffy:encode({[{error, <<"player_not_found">>}]})
+  end;
 
-processPost(Acc, Args) when Args#qsRec.action == <<"setstats">> ->
+processPost(Args) when Args#qsRec.action == <<"setstats">> ->
   GameID=Args#qsRec.gameid,
   PlayerID=Args#qsRec.playerid,
-  Ret=case findPlayer(GameID, PlayerID) of
+  case findPlayer(GameID, PlayerID) of
     {ok, PlayerDBRec} ->
       {atomic, _} = mnesia:transaction(
                       fun() -> 
@@ -280,33 +267,36 @@ processPost(Acc, Args) when Args#qsRec.action == <<"setstats">> ->
                           PlayerKey=element(2, PlayerDBRec),
                           mnesia:write({players, PlayerKey, UpdatedPlayerRec})
                       end),
-      term_to_binary("Stats updated");
+      jiffy:encode(<<"ok">>);
     not_found ->
-      term_to_binary("Player not found")
-  end,
-  <<Acc/binary, " ", Ret/binary>>.
+      jiffy:encode({[{error, <<"player_not_found">>}]})
+  end.
 
 handle(Req, State) ->
   {Method, Req2} = cowboy_req:method(Req),
   {Args, Req3}  = getQueryArgs(Req2),
   case Method of
     <<"POST">> ->
-      Body = processPost(<<"<h1>This is a response for POST</h1>">>, Args),
+      Body = processPost(Args),
       {ok, Req4} = cowboy_req:reply(200, [], Body, Req3),
       {ok, Req4, State};
     <<"GET">> ->
-      Body = processGet(<<"<h1>This is a response for GET</h1>">>, Args),
+      Body = processGet(Args),
       {ok, Req4} = cowboy_req:reply(200, [], Body, Req3),
       {ok, Req4, State};
     <<"DELETE">> ->
-      Body = processDelete(<<"<h1>This is a response for DELETE</h1>">>, Args),
+      Body = processDelete(Args),
       {ok, Req4} = cowboy_req:reply(200, [], Body, Req3),
       {ok, Req4, State};
-    _ ->
-      Body = <<"<h1>This is a response for other methods</h1>">>,
-      {ok, Req4} = cowboy_req:reply(200, [], Body, Req3),
+    _UnsupportedMethod ->
+      Body = <<_UnsupportedMethod/binary, " is not supported.">>,
+      {ok, Req4} = cowboy_req:reply(501, [], Body, Req3),
       {ok, Req4, State}
   end.
+
+init(_, Req, Opts) ->
+  Req2 = handle(Req, Opts),
+  {ok, Req2, Opts}.
 
 terminate(_Reason, _Req, _State) ->
 	ok.
