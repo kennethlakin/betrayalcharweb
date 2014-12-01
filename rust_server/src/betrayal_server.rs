@@ -32,22 +32,25 @@ pub struct JoinRoomRequest {
 #[deriving(Encodable, Decodable)]
 pub struct JoinRoomResponse;
 
-#[deriving(Decodable)]
+#[deriving(Decodable, Encodable)]
 pub struct ListRoomRequest {
     pub room_code: String
 }
 
-#[deriving(Encodable)]
+#[deriving(Encodable, Decodable)]
 pub struct ListRoomResponse {
     pub players: Vec<Player>
 }
 
-#[deriving(Decodable)]
+#[deriving(Decodable, Encodable)]
 pub struct PickColorRequest {
     pub room_code: String,
     pub name: String,
     pub color: Color,
 }
+
+#[deriving(Encodable, Decodable)]
+pub struct PickColorResponse;
 
 pub struct BetrayalServer {
     active_rooms: Mutex<HashMap<String, Mutex<Room>>>,
@@ -117,10 +120,8 @@ impl BetrayalServer {
             _ => (),
         };
         let mut player = Player::new(req.name.clone());
-        player.color = rand::random();
+        player.color = None;
         room.players.push(player);
-
-        println!("Players in room {} - {}", req.room_code, room.players);
         self.respond_with(res, &JoinRoomResponse)
     }
 
@@ -149,22 +150,25 @@ impl BetrayalServer {
             Err(ref e) => return self.write_out(e.desc, status::BadRequest, res)
         };
         let rooms = self.active_rooms.lock();
-        let room = match rooms.get(&req.room_code) {
+        let mut room = match rooms.get(&req.room_code) {
             Some(room) => room,
             None => return self.write_out(
                 "Room not found", status::NotFound, res),
         }.lock();
-
-        let player : &Player = match room.get_player(req.name.as_slice()) {
+        let mut player : Option<&mut Player> = None;
+        for p in room.players.iter_mut() {
+            if p.name == req.name {
+                player = Some(p);
+                break;
+            }
+        }
+        let player = match player {
             Some(p) => p,
             None => return self.write_out(
                 "Player not found", status::NotFound, res),
         };
-        println!("Sure would like to set {} to {}", player.color, req.color);
-        // player.color = Some(req.color);
-        self.write_out(
-            "Good request, not implemented yet though!",
-            status::NotImplemented, res)
+        player.color = Some(req.color);
+        self.respond_with(res, &PickColorResponse)
     }
 
     fn respond_with<'a, T: Encodable<Encoder<'a>, io::IoError>>(

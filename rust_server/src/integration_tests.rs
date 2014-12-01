@@ -7,7 +7,14 @@ use hyper::method::Method::{Get, Post};
 use hyper::client::{Request};
 use hyper;
 
-use betrayal_server::{BetrayalServer, CreateRoomResponse, JoinRoomResponse, JoinRoomRequest};
+use game_data::{Color};
+use betrayal_server::{
+    BetrayalServer,
+    CreateRoomResponse,
+    JoinRoomRequest, JoinRoomResponse,
+    ListRoomRequest, ListRoomResponse,
+    PickColorRequest, PickColorResponse,
+};
 
 struct TestServer {
     listen_serv : hyper::server::Listening,
@@ -90,10 +97,64 @@ fn join_room_works() {
     let ts = TestServer::new();
 
     let resp : CreateRoomResponse = ts.do_request("/api/create_room");
+    let lrr : ListRoomResponse = ts.post_request(
+        "/api/list_room", &ListRoomRequest {
+            room_code: resp.room_code.clone()
+        }
+    );
+    assert_eq!(0, lrr.players.len());
     let _ : JoinRoomResponse = ts.post_request(
         "/api/join_room", &JoinRoomRequest {
-            room_code: resp.room_code,
+            room_code: resp.room_code.clone(),
             name: "Test User".to_string(),
         }
     );
+
+    let lrr : ListRoomResponse = ts.post_request(
+        "/api/list_room", &ListRoomRequest {
+            room_code: resp.room_code.clone()
+        }
+    );
+    assert_eq!(1, lrr.players.len());
+    assert_eq!("Test User".to_string(), lrr.players[0].name);
+    match lrr.players[0].color {
+        None => (),
+        Some(_) => panic!("Player shouldn't start with a color."),
+    }
+    assert_eq!(None, lrr.players[0].color);
+}
+
+#[test]
+fn update_color() {
+    let ts = TestServer::new();
+
+    let resp : CreateRoomResponse = ts.do_request("/api/create_room");
+    let lrr : ListRoomResponse = ts.post_request(
+        "/api/list_room", &ListRoomRequest {
+            room_code: resp.room_code.clone()
+        }
+    );
+    assert_eq!(0, lrr.players.len());
+    let _ : JoinRoomResponse = ts.post_request(
+        "/api/join_room", &JoinRoomRequest {
+            room_code: resp.room_code.clone(),
+            name: "Test User".to_string(),
+        }
+    );
+
+    let _ : PickColorResponse = ts.post_request(
+        "/api/pick_color", &PickColorRequest {
+            room_code: resp.room_code.clone(),
+            name: "Test User".to_string(),
+            color: Color::Red
+        }
+    );
+
+    let lrr : ListRoomResponse = ts.post_request(
+        "/api/list_room", &ListRoomRequest {
+            room_code: resp.room_code.clone()
+        }
+    );
+    assert_eq!(1, lrr.players.len());
+    assert_eq!(Some(Color::Red), lrr.players[0].color);
 }

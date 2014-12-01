@@ -1,27 +1,11 @@
 extern crate serialize;
 
-use serialize::json;
-
-#[deriving(Show, Encodable, Decodable, Clone, Rand)]
+#[deriving(Show, Encodable, Decodable, Clone, Rand, Eq, PartialEq)]
 pub enum Color {
-    PURPLE, GREEN, WHITE, BLUE, RED, YELLOW
+    Purple, Green, White, Blue, Red, Yellow
 }
 
-impl json::ToJson for Color {
-    fn to_json(&self) -> json::Json {
-        let s = match *self {
-            Color::PURPLE => "purple",
-            Color::GREEN => "green",
-            Color::WHITE => "white",
-            Color::BLUE => "blue",
-            Color::RED => "red",
-            Color::YELLOW => "yellow",
-        };
-        json::String(s.to_string())
-    }
-}
-
-#[deriving(Show, Encodable, Clone)]
+#[deriving(Show, Encodable, Decodable, Clone)]
 pub struct Player {
     pub name : String,
     pub color : Option<Color>
