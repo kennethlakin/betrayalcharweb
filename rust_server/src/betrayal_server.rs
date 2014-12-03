@@ -14,47 +14,47 @@ use hyper::status;
 use hyper::uri;
 use framework::{HttpResult, error, post_response, respond_with, write_out};
 
-#[deriving(Encodable, Decodable)]
+#[deriving(Encodable, Decodable, Show)]
 pub struct CreateRoomResponse  {
     pub room_code: String,
 }
 
-#[deriving(Decodable, Encodable)]
+#[deriving(Decodable, Encodable, Show)]
 pub struct JoinRoomRequest {
     pub name : String,
     pub room_code: String
 }
 
-#[deriving(Encodable, Decodable)]
+#[deriving(Encodable, Decodable, Show)]
 pub struct JoinRoomResponse;
 
-#[deriving(Decodable, Encodable)]
+#[deriving(Decodable, Encodable, Show)]
 pub struct ListRoomRequest {
     pub room_code: String
 }
 
-#[deriving(Encodable, Decodable)]
+#[deriving(Encodable, Decodable, Show)]
 pub struct ListRoomResponse {
     pub players: Vec<Player>
 }
 
-#[deriving(Decodable, Encodable)]
+#[deriving(Decodable, Encodable, Show)]
 pub struct PickColorRequest {
     pub room_code: String,
     pub name: String,
     pub color: Color,
 }
 
-#[deriving(Encodable, Decodable)]
+#[deriving(Encodable, Decodable, Show)]
 pub struct PickColorResponse;
 
-#[deriving(Decodable, Encodable)]
+#[deriving(Decodable, Encodable, Show)]
 pub struct KickPlayerRequest {
     pub room_code: String,
     pub to_kick: String,
 }
 
-#[deriving(Encodable, Decodable)]
+#[deriving(Encodable, Decodable, Show)]
 pub struct KickPlayerResponse;
 
 pub struct BetrayalServer {
