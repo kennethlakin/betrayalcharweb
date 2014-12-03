@@ -1,0 +1,15 @@
+{application, server, [
+	{description, ""},
+	{vsn, "0.1.0"},
+	{id, "git"},
+	{modules, []},
+	{registered, []},
+	{applications, [
+		kernel,
+		stdlib,
+    mnesia,
+    cowboy
+	]},
+	{mod, {server_app, []}},
+	{env, []}
+]}.

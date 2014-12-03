@@ -1,0 +1,12 @@
+-record(stats, {speed::integer(), might::integer(), sanity::integer(), knowledge::integer()}).
+-type stats()::#stats{}.
+-type color()::purple | green | white | blue | red | orange.
+-type variant()::front | back.
+-record(character, {color::color(), variant::variant(), stats::stats()}).
+-type character()::#character{}.
+-type playerid()::binary().
+-type gameid()::binary().
+-record(player, {gameid::gameid(), playerid::playerid(), name::string(), character::character()}).
+-type player()::#player{}.
+-record(playerrec, {id::binary(), player::player()}).
+-record(gamerec, {gameid::gameid(), players::[player()]}).
