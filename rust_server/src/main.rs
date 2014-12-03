@@ -6,6 +6,7 @@ extern crate getopts;
 
 mod betrayal_server;
 mod game_data;
+mod framework;
 
 #[cfg(test)]
 mod integration_tests;

@@ -1,3 +1,5 @@
+extern crate test;
+
 use std::collections::HashSet;
 use std::io;
 use std::rand;
@@ -17,6 +19,92 @@ use betrayal_server::{
     PickColorRequest, PickColorResponse,
     KickPlayerRequest, KickPlayerResponse,
 };
+
+#[test]
+fn create_room_returns_unique_codes() {
+    let ts = TestServer::new();
+    let mut hs = HashSet::new();
+    for _ in range(0, 100u) {
+        let room_code = ts.create_room();
+        assert_eq!(false, hs.contains(&room_code));
+        hs.insert(room_code);
+    }
+}
+
+#[test]
+fn join_room_works() {
+    let ts = TestServer::new();
+
+    let room_code = ts.create_room();
+    assert_eq!(0, ts.list_players(room_code.clone()).len());
+    ts.join_room(room_code.clone(), "Test User");
+
+    let players = ts.list_players(room_code.clone());
+    assert_eq!(1, players.len());
+    assert_eq!("Test User".to_string(), players[0].name);
+    assert_eq!(None, players[0].color);
+}
+
+#[test]
+fn update_color() {
+    let ts = TestServer::new();
+
+    let room_code = ts.create_room();
+    assert_eq!(0, ts.list_players(room_code.clone()).len());
+    ts.join_room(room_code.clone(), "Test User");
+
+    let _ : PickColorResponse = ts.post_request(
+        "/api/pick_color", &PickColorRequest {
+            room_code: room_code.clone(),
+            name: "Test User".to_string(),
+            color: Color::Red
+        }
+    );
+
+    let players = ts.list_players(room_code.clone());
+    assert_eq!(1, players.len());
+    assert_eq!(Some(Color::Red), players[0].color);
+
+    ts.join_room(room_code.clone(), "JoeBob");
+    assert_eq!(2, ts.list_players(room_code.clone()).len());
+
+    let r = ts.make_request(Post, "/api/pick_color");
+    let mut stream = r.start().unwrap();
+    let request = &PickColorRequest {
+        name: "JoeBob".to_string(),
+        room_code: room_code.clone(),
+        color: Color::Red
+    };
+    stream.write(json::encode(request).as_bytes()).unwrap();
+    let result = stream.send().unwrap();
+    assert_eq!(status::BadRequest, result.status);
+}
+
+#[test]
+fn kick_player() {
+    let ts = TestServer::new();
+
+    let room_code = ts.create_room();
+    assert_eq!(0, ts.list_players(room_code.clone()).len());
+    ts.join_room(room_code.clone(), "Test User");
+    assert_eq!(1, ts.list_players(room_code.clone()).len());
+    ts.kick_player(room_code.clone(), "Test User");
+    assert_eq!(0, ts.list_players(room_code.clone()).len());
+}
+
+#[bench]
+fn bench_list_players(b: &mut test::Bencher) {
+    let ts = TestServer::new();
+    let room_code = ts.create_room();
+    ts.join_room(room_code.clone(), "A");
+    ts.join_room(room_code.clone(), "B");
+    ts.join_room(room_code.clone(), "C");
+    ts.join_room(room_code.clone(), "D");
+    ts.join_room(room_code.clone(), "E");
+    ts.join_room(room_code.clone(), "F");
+    ts.join_room(room_code.clone(), "G");
+    b.iter(|| ts.list_players(room_code.clone()));
+}
 
 struct TestServer {
     listen_serv : hyper::server::Listening,
@@ -116,76 +204,4 @@ impl Drop for TestServer {
     fn drop(&mut self) {
         self.listen_serv.close().unwrap();
     }
-}
-
-#[test]
-fn create_room_returns_unique_codes() {
-    let ts = TestServer::new();
-    let mut hs = HashSet::new();
-    for _ in range(0, 100u) {
-        let room_code = ts.create_room();
-        assert_eq!(false, hs.contains(&room_code));
-        hs.insert(room_code);
-    }
-}
-
-#[test]
-fn join_room_works() {
-    let ts = TestServer::new();
-
-    let room_code = ts.create_room();
-    assert_eq!(0, ts.list_players(room_code.clone()).len());
-    ts.join_room(room_code.clone(), "Test User");
-
-    let players = ts.list_players(room_code.clone());
-    assert_eq!(1, players.len());
-    assert_eq!("Test User".to_string(), players[0].name);
-    assert_eq!(None, players[0].color);
-}
-
-#[test]
-fn update_color() {
-    let ts = TestServer::new();
-
-    let room_code = ts.create_room();
-    assert_eq!(0, ts.list_players(room_code.clone()).len());
-    ts.join_room(room_code.clone(), "Test User");
-
-    let _ : PickColorResponse = ts.post_request(
-        "/api/pick_color", &PickColorRequest {
-            room_code: room_code.clone(),
-            name: "Test User".to_string(),
-            color: Color::Red
-        }
-    );
-
-    let players = ts.list_players(room_code.clone());
-    assert_eq!(1, players.len());
-    assert_eq!(Some(Color::Red), players[0].color);
-
-    ts.join_room(room_code.clone(), "JoeBob");
-    assert_eq!(2, ts.list_players(room_code.clone()).len());
-
-    let r = ts.make_request(Post, "/api/pick_color");
-    let mut stream = r.start().unwrap();
-    let request = &PickColorRequest {
-        name: "JoeBob".to_string(),
-        room_code: room_code.clone(),
-        color: Color::Red
-    };
-    stream.write(json::encode(request).as_bytes()).unwrap();
-    let result = stream.send().unwrap();
-    assert_eq!(status::BadRequest, result.status);
-}
-
-#[test]
-fn kick_player() {
-    let ts = TestServer::new();
-
-    let room_code = ts.create_room();
-    assert_eq!(0, ts.list_players(room_code.clone()).len());
-    ts.join_room(room_code.clone(), "Test User");
-    assert_eq!(1, ts.list_players(room_code.clone()).len());
-    ts.kick_player(room_code.clone(), "Test User");
-    assert_eq!(0, ts.list_players(room_code.clone()).len());
 }

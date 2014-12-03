@@ -27,14 +27,14 @@ pub struct Room {
 impl Room {
     pub fn new() -> Room {
         Room {
-            players: vec![],
+            players: Vec::with_capacity(6),
         }
     }
 
-    pub fn get_player<'a>(&'a self, name: &str) -> Option<&'a Player> {
-        for ref player in self.players.iter() {
+    pub fn get_player<'a>(&'a mut self, name: &str) -> Option<&'a mut Player> {
+        for mut player in self.players.iter_mut() {
             if player.name.as_slice() == name {
-                return Some(*player);
+                return Some(player);
             }
         }
         None
