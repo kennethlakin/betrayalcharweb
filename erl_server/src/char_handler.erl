@@ -10,7 +10,7 @@
 -include("gameRecord.hrl").
 -include("querystringRecord.hrl").
 
--define(ACTIONS, 
+-define(ACTIONS,
         #{
           <<"kickplayer">> => #{method => <<"DELETE">>, args => [gameid, playerid]},
           <<"getplayers">> => #{method => <<"GET">>, args => [gameid]},
@@ -62,7 +62,7 @@ getQueryArgs(R) ->
                     {Val, NextReq} = cowboy_req:qs_val(atom_to_binary(F, latin1), Req),
                     NextStuff=setRec(Stuff, F, Val),
                     {NextStuff, NextReq}
-              end, 
+              end,
               {#qsRec{}, R},
               QueryArgs),
   {QSStuff, NewReq}.
@@ -177,12 +177,12 @@ addPlayer(GameID, Args) ->
   case findPlayer(GameID, PlayerID) of
     not_found ->
       {atomic, {ok, PlayerID}} = mnesia:transaction(
-                        fun() -> 
+                        fun() ->
                             mnesia:lock({table, games}, write),
                             mnesia:lock({table, players}, write),
                             Key=concatIDs(GameID, PlayerID),
                             PlayerName=Args#qsRec.playername,
-                            PlayerRec=#playerrec{id=PlayerID, 
+                            PlayerRec=#playerrec{id=PlayerID,
                                                  player=#player{name=PlayerName, gameid=GameID,
                                                                 playerid=PlayerID, character=#character{
                                                                                                stats=#stats{}}}},
@@ -208,7 +208,7 @@ handleRequest(Args) when Args#qsRec.action == <<"kickplayer">> ->
   GameID=Args#qsRec.gameid,
   Key=concatIDs(GameID, PlayerID),
   {atomic, Ret} = mnesia:transaction(
-                    fun() -> 
+                    fun() ->
                         mnesia:lock({table, games}, write),
                         mnesia:lock({table, players}, write),
                         case findGame(GameID) of
@@ -219,8 +219,8 @@ handleRequest(Args) when Args#qsRec.action == <<"kickplayer">> ->
                                 Game=element(3, GameRec),
                                 GamePlayerList=Game#gamerec.players,
                                 UpdatedPlayerList=lists:filter(
-                                                    fun(Player) -> 
-                                                        Player#playerrec.player#player.playerid /= PlayerID end, 
+                                                    fun(Player) ->
+                                                        Player#playerrec.player#player.playerid /= PlayerID end,
                                                     GamePlayerList),
                                 UpdatedGame=
                                 Game#gamerec{
@@ -244,7 +244,7 @@ handleRequest(Args) when Args#qsRec.action == <<"getplayers">> ->
       %Iterate over players in game.
       GameRec=element(3, GameDBRec),
       GamePlayers=GameRec#gamerec.players,
-      PlayerArr=lists:foldl(fun (GamePlayer, A) -> 
+      PlayerArr=lists:foldl(fun (GamePlayer, A) ->
                                 PlayerID=GamePlayer#playerrec.id,
                                 {ok, PlayerDBRec} = findPlayer(GameID, PlayerID),
                                 PlayerRec=element(3, PlayerDBRec),
@@ -299,7 +299,7 @@ handleRequest(Args) when Args#qsRec.action == <<"setcolor">> ->
   case findPlayer(GameID, PlayerID) of
     {ok, PlayerDBRec} ->
       {atomic, _} = mnesia:transaction(
-                      fun() -> 
+                      fun() ->
                           mnesia:lock({table, players}, write),
                           %FIXME: Figure out a good way to convert these to
                           %binary_to_existing_atom
@@ -327,7 +327,7 @@ handleRequest(Args) when Args#qsRec.action == <<"setstats">> ->
   GameID=Args#qsRec.gameid,
   PlayerID=Args#qsRec.playerid,
   {atomic, Ret} = mnesia:transaction(
-                    fun() -> 
+                    fun() ->
                         mnesia:lock({table, players}, write),
                         case findPlayer(GameID, PlayerID) of
                           {ok, PlayerDBRec} ->
