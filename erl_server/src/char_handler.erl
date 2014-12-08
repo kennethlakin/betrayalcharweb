@@ -203,7 +203,7 @@ addPlayer(GameID, Args) ->
       addPlayer(GameID, Args)
   end.
 
-processDelete(Args) when Args#qsRec.action == <<"kickplayer">> ->
+handleRequest(Args) when Args#qsRec.action == <<"kickplayer">> ->
   PlayerID=Args#qsRec.playerid,
   GameID=Args#qsRec.gameid,
   Key=concatIDs(GameID, PlayerID),
@@ -235,9 +235,9 @@ processDelete(Args) when Args#qsRec.action == <<"kickplayer">> ->
                             jiffy:encode({[{error, <<"game_not_found">>}]})
                         end
                     end),
-  Ret.
+  Ret;
 
-processGet(Args) when Args#qsRec.action == <<"getplayers">> ->
+handleRequest(Args) when Args#qsRec.action == <<"getplayers">> ->
   GameID=Args#qsRec.gameid,
   case findGame(GameID) of
     {ok, GameDBRec} ->
@@ -260,7 +260,7 @@ processGet(Args) when Args#qsRec.action == <<"getplayers">> ->
       jiffy:encode({[{error, <<"game_not_found">>}]})
   end;
 
-processGet(Args) when Args#qsRec.action == <<"getplayer">> ->
+handleRequest(Args) when Args#qsRec.action == <<"getplayer">> ->
   GameID=Args#qsRec.gameid,
   PlayerID=Args#qsRec.playerid,
   case findGame(GameID) of
@@ -276,14 +276,14 @@ processGet(Args) when Args#qsRec.action == <<"getplayer">> ->
       end;
     not_found ->
       jiffy:encode({[{error, <<"game_not_found">>}]})
-  end.
+  end;
 
 
-processPost(Args) when Args#qsRec.action == <<"creategame">> ->
+handleRequest(Args) when Args#qsRec.action == <<"creategame">> ->
   GameID=createGame(),
   jiffy:encode({[{room_code, GameID}]});
 
-processPost(Args) when Args#qsRec.action == <<"addplayer">> ->
+handleRequest(Args) when Args#qsRec.action == <<"addplayer">> ->
   GameID=Args#qsRec.gameid,
   case findGame(GameID) of
     {ok, _} ->
@@ -293,7 +293,7 @@ processPost(Args) when Args#qsRec.action == <<"addplayer">> ->
       jiffy:encode({[{error, <<"game_not_found">>}]})
   end;
 
-processPost(Args) when Args#qsRec.action == <<"setcolor">> ->
+handleRequest(Args) when Args#qsRec.action == <<"setcolor">> ->
   GameID=Args#qsRec.gameid,
   PlayerID=Args#qsRec.playerid,
   case findPlayer(GameID, PlayerID) of
@@ -323,7 +323,7 @@ processPost(Args) when Args#qsRec.action == <<"setcolor">> ->
       jiffy:encode({[{error, <<"player_not_found">>}]})
   end;
 
-processPost(Args) when Args#qsRec.action == <<"setstats">> ->
+handleRequest(Args) when Args#qsRec.action == <<"setstats">> ->
   GameID=Args#qsRec.gameid,
   PlayerID=Args#qsRec.playerid,
   {atomic, Ret} = mnesia:transaction(
@@ -379,21 +379,13 @@ verifyRequest(Method, Args) ->
 
 handle(Req, State) ->
   {Method, Req2} = cowboy_req:method(Req),
-  {Args, Req3}  = getQueryArgs(Req2),
+  {Args, Req3} = getQueryArgs(Req2),
   RequestVerification=verifyRequest(Method, Args),
   case RequestVerification of
     ok ->
       case Method of
-        <<"POST">> ->
-          Body = processPost(Args),
-          {ok, Req4} = cowboy_req:reply(200, [], Body, Req3),
-          {ok, Req4, State};
-        <<"GET">> ->
-          Body = processGet(Args),
-          {ok, Req4} = cowboy_req:reply(200, [], Body, Req3),
-          {ok, Req4, State};
-        <<"DELETE">> ->
-          Body = processDelete(Args),
+        Method when Method == <<"POST">> orelse Method == <<"GET">> orelse Method == <<"DELETE">> ->
+          Body = handleRequest(Args),
           {ok, Req4} = cowboy_req:reply(200, [], Body, Req3),
           {ok, Req4, State};
         UnsupportedMethod ->
