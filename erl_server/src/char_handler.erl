@@ -266,6 +266,7 @@ processPost(Args) when Args#qsRec.action == <<"setcolor">> ->
     {ok, PlayerDBRec} ->
       {atomic, _} = mnesia:transaction(
                       fun() -> 
+                          mnesia:lock({table, players}, write),
                           Color=binary_to_existing_atom(Args#qsRec.color, latin1),
                           Variant=binary_to_existing_atom(Args#qsRec.variant, latin1),
 
@@ -289,36 +290,38 @@ processPost(Args) when Args#qsRec.action == <<"setcolor">> ->
 processPost(Args) when Args#qsRec.action == <<"setstats">> ->
   GameID=Args#qsRec.gameid,
   PlayerID=Args#qsRec.playerid,
-  case findPlayer(GameID, PlayerID) of
-    {ok, PlayerDBRec} ->
-      {atomic, _} = mnesia:transaction(
-                      fun() -> 
-                          %There doesn't really seem to be a way around
-                          %breaking out each component of the record
-                          %and putting them back together.
-                          Speed=binary_to_integer(Args#qsRec.speed),
-                          Might=binary_to_integer(Args#qsRec.might),
-                          Sanity=binary_to_integer(Args#qsRec.sanity),
-                          Knowledge=binary_to_integer(Args#qsRec.knowledge),
+  {atomic, Ret} = mnesia:transaction(
+                    mnesia:lock({table, players}, write),
+                    fun() -> 
+                        case findPlayer(GameID, PlayerID) of
+                          {ok, PlayerDBRec} ->
+                            %There doesn't really seem to be a way around
+                            %breaking out each component of the record
+                            %and putting them back together.
+                            Speed=binary_to_integer(Args#qsRec.speed),
+                            Might=binary_to_integer(Args#qsRec.might),
+                            Sanity=binary_to_integer(Args#qsRec.sanity),
+                            Knowledge=binary_to_integer(Args#qsRec.knowledge),
 
-                          PlayerRec=element(3, PlayerDBRec),
-                          Player=PlayerRec#playerrec.player,
-                          Character=Player#player.character,
-                          UpdatedStats=#stats{speed=Speed,
-                                              might=Might,
-                                              sanity=Sanity,
-                                              knowledge=Knowledge},
-                          UpdatedCharacter=Character#character{stats=UpdatedStats},
-                          UpdatedPlayer=Player#player{character=UpdatedCharacter},
-                          UpdatedPlayerRec=PlayerRec#playerrec{player=UpdatedPlayer},
+                            PlayerRec=element(3, PlayerDBRec),
+                            Player=PlayerRec#playerrec.player,
+                            Character=Player#player.character,
+                            UpdatedStats=#stats{speed=Speed,
+                                                might=Might,
+                                                sanity=Sanity,
+                                                knowledge=Knowledge},
+                            UpdatedCharacter=Character#character{stats=UpdatedStats},
+                            UpdatedPlayer=Player#player{character=UpdatedCharacter},
+                            UpdatedPlayerRec=PlayerRec#playerrec{player=UpdatedPlayer},
 
-                          PlayerKey=element(2, PlayerDBRec),
-                          mnesia:write({players, PlayerKey, UpdatedPlayerRec})
-                      end),
-      jiffy:encode(<<"ok">>);
-    not_found ->
-      jiffy:encode({[{error, <<"player_not_found">>}]})
-  end.
+                            PlayerKey=element(2, PlayerDBRec),
+                            mnesia:write({players, PlayerKey, UpdatedPlayerRec}),
+                            jiffy:encode(<<"ok">>);
+                          not_found ->
+                            jiffy:encode({[{error, <<"player_not_found">>}]})
+                        end
+                    end),
+  Ret.
 
 verifyRequest(Args) ->
   Action=Args#qsRec.action,
