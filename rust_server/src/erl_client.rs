@@ -16,26 +16,23 @@ struct CreateGameResponse {
 
 #[deriving(Decodable, Show)]
 struct Player {
-    gameid: String,
     playerid: String,
     name: String,
-    character: Character
+    color: Option<Color>,
+    variant: Option<Variant>,
+    speed: Option<int>,
+    might: Option<int>,
+    sanity: Option<int>,
+    knowledge: Option<int>,
 }
 
-#[deriving(Decodable, Show)]
-struct Character {
-    color: Color,
-    variant: Variant,
-    stats: Stats
-}
-
-#[deriving(Decodable, Show)]
+#[deriving(Decodable, Show, Eq, PartialEq)]
 #[allow(non_camel_case_types)]
 enum Color {
     purple, green, white, blue, red, orange,
 }
 
-#[deriving(Decodable, Show)]
+#[deriving(Decodable, Show, Eq, PartialEq)]
 #[allow(non_camel_case_types)]
 enum Variant {
     front, back,
@@ -57,13 +54,7 @@ struct Stats {
 #[deriving(Decodable, Show)]
 struct ListPlayersResponse {
     gameid: String,
-    players: Vec<BasicPlayer>,
-}
-
-#[deriving(Decodable, Show)]
-struct BasicPlayer {
-    name: String,
-    id: String,
+    players: Vec<Player>,
 }
 
 #[deriving(Decodable, Show)]
@@ -96,13 +87,13 @@ fn join_room_works() {
     let ec = ErlClient::new(host, PORT);
 
     let room_code = ec.create_room().unwrap();
-    assert_eq!(0, ec.list_players(room_code.clone()).unwrap().len());
+    // assert_eq!(0, ec.list_players(room_code.clone()).unwrap().len());
     let player_id = ec.join_room(room_code.clone(), "TestUser").unwrap();
 
     let players = ec.list_players(room_code.clone()).unwrap();
     assert_eq!(1, players.len());
     assert_eq!("TestUser".to_string(), players[0].name);
-    assert_eq!(player_id, players[0].id);
+    assert_eq!(player_id, players[0].playerid);
 }
 
 #[test]
@@ -114,7 +105,24 @@ fn update_info() {
     assert_eq!(0, ec.list_players(room_code.clone()).unwrap().len());
     let player_id = ec.join_room(room_code.clone(), "TestUser").unwrap();
 
-    ec.set_stats(room_code.clone(), player_id.clone(), [4,4,4,4]).unwrap();
+    let players = ec.list_players(room_code.clone()).unwrap();
+    assert_eq!(1, players.len());
+    assert_eq!(None, players[0].color);
+    assert_eq!(None, players[0].variant);
+    assert_eq!(None, players[0].speed);
+    assert_eq!(None, players[0].might);
+    assert_eq!(None, players[0].sanity);
+    assert_eq!(None, players[0].knowledge);
+
+    ec.set_stats(room_code.clone(), player_id.clone(), [1,2,3,4]).unwrap();
+    let players = ec.list_players(room_code.clone()).unwrap();
+    assert_eq!(1, players.len());
+    assert_eq!(None, players[0].color);
+    assert_eq!(None, players[0].variant);
+    assert_eq!(Some(1), players[0].speed);
+    assert_eq!(Some(2), players[0].might);
+    assert_eq!(Some(3), players[0].sanity);
+    assert_eq!(Some(4), players[0].knowledge);
 
     ec.pick_color(
         room_code.clone(), player_id.clone(), Color::red, Variant::front)
@@ -122,7 +130,12 @@ fn update_info() {
 
     let players = ec.list_players(room_code.clone()).unwrap();
     assert_eq!(1, players.len());
-    // assert_eq!(Some(Color::red), players[0].color);
+    assert_eq!(Some(Color::red), players[0].color);
+    assert_eq!(Some(Variant::front), players[0].variant);
+    assert_eq!(Some(1), players[0].speed);
+    assert_eq!(Some(2), players[0].might);
+    assert_eq!(Some(3), players[0].sanity);
+    assert_eq!(Some(4), players[0].knowledge);
 
     ec.join_room(room_code.clone(), "JoeBob").unwrap();
     assert_eq!(2, ec.list_players(room_code.clone()).unwrap().len());
@@ -202,7 +215,7 @@ impl ErlClient {
             "character", "action=creategame").map(|resp| resp.room_code)
     }
 
-    fn list_players(&self, room_code: String) -> R<Vec<BasicPlayer>> {
+    fn list_players(&self, room_code: String) -> R<Vec<Player>> {
         let mut s = "action=getplayers".to_string();
         s.push_str("&gameid=");
         s.push_str(room_code.as_slice());
