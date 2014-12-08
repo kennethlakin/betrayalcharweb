@@ -1,3 +1,5 @@
+extern crate test;
+
 use std::collections::HashSet;
 use serialize::{Decodable, json};
 use serialize::json::{Decoder, DecoderError};
@@ -159,6 +161,21 @@ fn kick_player() {
     assert_eq!(0, ec.list_players(room_code.clone()).unwrap().len());
 }
 
+#[bench]
+fn bench_list_players(b: &mut test::Bencher) {
+    let host = url::Host::Domain(DOMAIN.to_string());
+    let ec = ErlClient::new(host, PORT);
+    let room_code = ec.create_room().unwrap();
+    ec.join_room(room_code.clone(), "A").unwrap();
+    ec.join_room(room_code.clone(), "B").unwrap();
+    ec.join_room(room_code.clone(), "C").unwrap();
+    ec.join_room(room_code.clone(), "D").unwrap();
+    ec.join_room(room_code.clone(), "E").unwrap();
+    ec.join_room(room_code.clone(), "F").unwrap();
+    ec.join_room(room_code.clone(), "G").unwrap();
+    b.iter(|| ec.list_players(room_code.clone()));
+}
+
 type R<T> = Result<T, ErrorResponse>;
 
 struct ErlClient {
@@ -195,14 +212,12 @@ impl ErlClient {
 
     fn do_request<T: Decodable<Decoder, DecoderError>>(&self, method: hyper::method::Method, path: &str, query: &str)
             -> Result<T, ErrorResponse> {
-        println!("{} request: {}", method, query);
         let req = self.make_request(method, path, query);
 
         let mut res = req.start().unwrap().send().unwrap();
         // Read the Response.
         let body = res.read_to_string().unwrap();
 
-        println!("response {}: {}\n", res.status, body);
         if res.status == status::StatusCode::Ok {
             Ok(json::decode(body.as_slice()).unwrap())
         } else {
