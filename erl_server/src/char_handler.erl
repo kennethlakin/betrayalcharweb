@@ -232,14 +232,15 @@ processGet(Args) when Args#qsRec.action == <<"getplayers">> ->
       %Iterate over players in game.
       GameRec=element(3, GameDBRec),
       Players=GameRec#gamerec.players,
-      PlayerArr=[lists:foldl(fun (Player, A) -> 
+      PlayerArr=lists:foldl(fun (Player, A) -> 
                                 lists:append([
-                                              {[{name, Player#playerrec.player#player.name}]},
-                                              {[{id, Player#playerrec.id}]}
+                                              {[{name, Player#playerrec.player#player.name},
+                                              {id, Player#playerrec.id}]}
                                              ], A)
                             end,
-                            [], Players)],
-      Ret=lists:append([{[{gameid, GameRec#gamerec.gameid}]}], PlayerArr),
+                            [], Players),
+      Ret={[{gameid, GameRec#gamerec.gameid},
+            {<<"players">>, PlayerArr }]},
       jiffy:encode(Ret);
     not_found ->
       jiffy:encode({[{error, <<"game_not_found">>}]})
