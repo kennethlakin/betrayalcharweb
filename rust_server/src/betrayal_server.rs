@@ -9,8 +9,7 @@ use std::collections::HashMap;
 use serialize::{Encodable};
 use std::rand;
 use hyper::server::{Request, Response};
-use hyper::status::{BadRequest, NotFound, NotImplemented};
-use hyper::status;
+use hyper::status::StatusCode::{BadRequest, NotFound, NotImplemented};
 use hyper::uri;
 use framework::{HttpResult, error, post_response, respond_with, write_out};
 
@@ -105,7 +104,7 @@ impl BetrayalServer {
         }
         let player = match room.get_player(pcr.name.as_slice()) {
             Some(p) => p,
-            None => return error(status::NotFound, "Player not found"),
+            None => return error(NotFound, "Player not found"),
         };
         player.color = Some(pcr.color);
         Ok(PickColorResponse)

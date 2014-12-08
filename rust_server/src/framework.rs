@@ -4,7 +4,7 @@ use serialize::json::{Encoder, Decoder, DecoderError};
 use std::str;
 use hyper::header::common::content_type;
 use hyper::server::{Request, Response};
-use hyper::status::{BadRequest};
+use hyper::status::StatusCode::{BadRequest};
 use hyper::status;
 use mime::{Mime};
 use mime;
@@ -66,7 +66,7 @@ fn respond_with_code<'a, T: Encodable<Encoder<'a>, io::IoError>>(
 
 pub fn respond_with<'a, T: Encodable<Encoder<'a>, io::IoError>>(
             res: Response, data: &T) -> Result<(), &'static str> {
-    respond_with_code(res, status::Ok, data)
+    respond_with_code(res, status::StatusCode::Ok, data)
 }
 
 pub fn write_out(data: &str,

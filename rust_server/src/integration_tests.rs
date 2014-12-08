@@ -137,7 +137,7 @@ impl TestServer {
         // Read the Response.
         let body = res.read_to_string().unwrap();
 
-        if res.status == status::Ok {
+        if res.status == status::StatusCode::Ok {
             Ok(json::decode(body.as_slice()).unwrap())
         } else {
             Err(json::decode(body.as_slice()).unwrap())
@@ -153,7 +153,7 @@ impl TestServer {
         let mut result = stream.send().unwrap();
         let status = result.status;
         let body = result.read_to_string().unwrap();
-        if status == status::Ok {
+        if status == status::StatusCode::Ok {
             Ok(json::decode(body.as_slice()).unwrap())
         } else {
             Err(json::decode(body.as_slice()).unwrap())
