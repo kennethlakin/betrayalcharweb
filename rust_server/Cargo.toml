@@ -2,7 +2,7 @@
 
 name = "rust_server"
 version = "0.0.1"
-authors = ["Peter Burns <rictic@google.com>"]
+authors = ["Peter Burns <rictic@gmail.com>"]
 
 [dependencies.hyper]
 

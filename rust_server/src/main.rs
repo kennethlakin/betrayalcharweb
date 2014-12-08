@@ -8,8 +8,8 @@ mod betrayal_server;
 mod game_data;
 mod framework;
 
-// #[cfg(test)]
-// mod erl_client;
+#[cfg(test)]
+mod erl_client;
 #[cfg(test)]
 mod integration_tests;
 

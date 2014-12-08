@@ -1,6 +1,8 @@
+use std::collections::HashSet;
 use serialize::{Decodable, json};
+use serialize::json::Json;
 use serialize::json::{Decoder, DecoderError};
-use hyper::method::Method::{Post};
+use hyper::method::Method::{Post, Get};
 use hyper::client::{Request};
 use hyper::status;
 use url;
@@ -13,13 +15,84 @@ struct CreateGameResponse {
     room_code: String,
 }
 
+#[deriving(Decodable, Show)]
+struct Player {
+    gameid: String,
+    playerid: String,
+    name: String,
+    character: Character
+}
+
+#[deriving(Decodable, Show)]
+struct Character {
+    color: Color,
+    variant: Variant,
+    stats: Stats
+}
+
+#[deriving(Decodable, Show)]
+enum Color {
+    purple, green, white, blue, red, orange,
+}
+
+#[deriving(Decodable, Show)]
+enum Variant {
+    front, back,
+}
+
+#[deriving(Decodable, Show)]
+struct Game {
+    gameid: String,
+}
+
+#[deriving(Decodable, Show)]
+struct Stats {
+    speed: int,
+    might: int,
+    sanity: int,
+    knowledge: int,
+}
+
+#[deriving(Decodable, Show)]
+struct JoinRoomResponse {
+    gameid: String,
+    playerid: String,
+}
+
+// -record(playerrec, {id::binary(), player::player()}).
+// -record(gamerec, {gameid::gameid(), players::[player()]}).
+
+
 #[test]
 fn test_create_room() {
-    let host = url::Host::Ipv6(url::Ipv6Address::parse("2601:9:4f00:1191:f66d:4ff:fe53:d79c").unwrap());
-    let ec = ErlClient::new(host, 9909);
+    let host = url::Host::Domain("127.0.0.1".to_string());
+    let ec = ErlClient::new(host, 8080);
 
-    let _ : CreateGameResponse = ec.do_request(Post, "character", "action=creategame").unwrap();
+    let mut hs = HashSet::new();
+    for _ in range(0, 100u) {
+        let room_code = ec.create_room().unwrap();
+        assert_eq!(false, hs.contains(&room_code.clone()));
+        hs.insert(room_code);
+    }
 }
+
+
+#[test]
+fn join_room_works() {
+    let host = url::Host::Domain("127.0.0.1".to_string());
+    let ec = ErlClient::new(host, 8080);
+
+    let room_code = ec.create_room().unwrap();
+    assert_eq!(0, ec.list_players(room_code.clone()).unwrap().len());
+    let player_id = ec.join_room(room_code.clone(), "TestUser").unwrap();
+
+    // let players = ec.list_players(room_code.clone()).unwrap();
+    // assert_eq!(1, players.len());
+    // assert_eq!("Test User".to_string(), players[0].name);
+    // assert_eq!(None, players[0].color);
+}
+
+type R<T> = Result<T, ErrorResponse>;
 
 struct ErlClient {
     host: url::Host,
@@ -52,6 +125,7 @@ impl ErlClient {
             method, url).unwrap()
     }
 
+
     fn do_request<T: Decodable<Decoder, DecoderError>>(&self, method: hyper::method::Method, path: &str, query: &str)
             -> Result<T, ErrorResponse> {
         let req = self.make_request(method, path, query);
@@ -60,6 +134,8 @@ impl ErlClient {
         // Read the Response.
         let body = res.read_to_string().unwrap();
 
+        println!("body: {}", body);
+        assert_eq!(status::StatusCode::Ok, res.status);
         if res.status == status::StatusCode::Ok {
             Ok(json::decode(body.as_slice()).unwrap())
         } else {
@@ -83,30 +159,29 @@ impl ErlClient {
 //         }
 //     }
 
-//     fn create_room(&self) -> R<String> {
-//         let r : R<CreateRoomResponse> = self.do_request("/api/create_room");
-//         r.map(|resp| resp.room_code)
-//     }
 
-//     fn list_players(&self, room_code: String) -> R<Box<Vec<Player>>> {
-//         let r : R<ListRoomResponse> = self.post_request(
-//             "/api/list_room", &ListRoomRequest {
-//                 room_code: room_code
-//             }
-//         );
-//         r.map(|lrr| box lrr.players)
-//     }
+    fn create_room(&self) -> R<String> {
+        self.do_request::<CreateGameResponse>(Post,
+            "character", "action=creategame").map(|resp| resp.room_code)
+    }
 
-//     fn join_room(&self, room_code: String, name: &str) ->
-//             R<JoinRoomResponse> {
-//         let r : R<JoinRoomResponse> = self.post_request(
-//             "/api/join_room", &JoinRoomRequest {
-//                 room_code: room_code,
-//                 name: name.to_string(),
-//             }
-//         );
-//         r
-//     }
+    fn list_players(&self, room_code: String) -> R<Vec<Player>> {
+        let mut s = "action=getplayers".to_string();
+        s.push_str("&gameid=");
+        s.push_str(room_code.as_slice());
+        self.do_request::<(Game, Vec<Player>)>(Get, "character", s.as_slice())
+            .map(|resp| {let (_, players) = resp; players})
+    }
+
+    fn join_room(&self, room_code: String, name: &str) -> R<String> {
+        let mut s = "action=addplayer".to_string();
+        s.push_str("&gameid=");
+        s.push_str(room_code.as_slice());
+        s.push_str("&playername=");
+        s.push_str(name);
+        self.do_request::<JoinRoomResponse>(Post, "character", s.as_slice())
+            .map(|jrr| jrr.playerid)
+    }
 
 //     fn pick_color(&self, room_code: String, name: &str, color: Color) ->
 //             R<PickColorResponse> {
