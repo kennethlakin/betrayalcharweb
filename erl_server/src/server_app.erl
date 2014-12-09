@@ -19,9 +19,20 @@ initMnesia(Nodes) ->
   ok=mnesia:wait_for_tables([games], 500).
 
 start(_Type, _Args) ->
+  %Inject the color and variant atoms into the process, so we can use
+  %binary_to_existing_atom later.
+  VALID_COLORS=[<<"purple">>, <<"green">>, <<"white">>, <<"blue">>, <<"red">>, <<"orange">>],
+  VALID_VARIANTS=[<<"front">>, <<"back">>],
+  lists:foreach(fun(F) -> binary_to_atom(F, latin1) end, lists:append(VALID_COLORS, VALID_VARIANTS)),
   Dispatch = cowboy_router:compile([
                                     {'_', [
-                                           {"/character", char_handler, []}
+                                           {"/api/kickplayer", char_handler, []},
+                                           {"/api/getplayers", char_handler, []},
+                                           {"/api/getplayer", char_handler, []},
+                                           {"/api/creategame", char_handler, []},
+                                           {"/api/addplayer", char_handler, []},
+                                           {"/api/setcolor", char_handler, []},
+                                           {"/api/setstats", char_handler, []}
                                           ]}
                                    ]),
   initMnesia([node()]),
