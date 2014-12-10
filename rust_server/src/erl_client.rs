@@ -213,14 +213,14 @@ impl ErlClient {
 
     fn do_request<T: Decodable<Decoder, DecoderError>>(&self, method: hyper::method::Method, path: &str, query: &str)
             -> Result<T, ErrorResponse> {
-        println!("{} {}?{}", method, path, query);
+        // println!("{} {}?{}", method, path, query);
         let req = self.make_request(method, path, query);
 
         let mut res = req.start().unwrap().send().unwrap();
         // Read the Response.
         let body = res.read_to_string().unwrap();
 
-        println!("{}: {}", res.status, body);
+        // println!("{}: {}", res.status, body);
         if res.status == status::StatusCode::Ok {
             Ok(json::decode(body.as_slice()).unwrap())
         } else {

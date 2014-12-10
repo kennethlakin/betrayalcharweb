@@ -1,7 +1,7 @@
 use std::io;
+use serialize;
 use serialize::{Encodable, Decodable, json};
 use serialize::json::{Encoder, Decoder, DecoderError};
-use std::str;
 use hyper::header::common::content_type;
 use hyper::server::{Request, Response};
 use hyper::status::StatusCode::{BadRequest};
@@ -40,19 +40,21 @@ pub fn post_response<'a, D: Encodable<Encoder<'a>, io::IoError>,
 
 fn read_json_post<T: Decodable<Decoder, DecoderError>>(mut req : Request) ->
         io::IoResult<T> {
-    req.read_to_end().and_then(|s|
-        str::from_utf8(s.as_slice()).ok_or(io::IoError {
+    let json = try!(json::from_reader(&mut req).map_err(|_| {
+        io::IoError {
             kind: io::InvalidInput,
-            desc: "Not valid utf-8",
-            detail: None
-        }).and_then(|s|
-            json::decode::<T>(s).map_err(|_| io::IoError {
-                kind: io::InvalidInput,
-                desc: "Invalid input",
-                detail:None
-            })
-        )
-    )
+            desc: "Unable to parse json in request",
+            detail: None,
+        }
+    }));
+    let mut decoder = Decoder::new(json);
+    serialize::Decodable::decode(&mut decoder).map_err(|_| {
+        io::IoError {
+            kind: io::InvalidInput,
+            desc: "Unable to map the json in the request to the expected type",
+            detail: None,
+        }
+    })
 }
 
 fn respond_with_code<'a, T: Encodable<Encoder<'a>, io::IoError>>(

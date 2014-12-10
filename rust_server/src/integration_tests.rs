@@ -3,6 +3,7 @@ extern crate test;
 use std::collections::HashSet;
 use std::io;
 use std::rand;
+use serialize;
 use serialize::{Encodable, Decodable, json};
 use serialize::json::{Encoder, Decoder, DecoderError};
 use hyper::method::Method::{Get, Post};
@@ -133,14 +134,12 @@ impl TestServer {
             -> Result<T, ErrorResponse> {
         let req = self.make_request(Get, path);
 
-        let mut res = req.start().unwrap().send().unwrap();
-        // Read the Response.
-        let body = res.read_to_string().unwrap();
-
-        if res.status == status::StatusCode::Ok {
-            Ok(json::decode(body.as_slice()).unwrap())
+        let mut result = req.start().unwrap().send().unwrap();
+        let mut decoder = Decoder::new(json::from_reader(&mut result).unwrap());
+        if result.status == status::StatusCode::Ok {
+            Ok(serialize::Decodable::decode(&mut decoder).unwrap())
         } else {
-            Err(json::decode(body.as_slice()).unwrap())
+            Err(serialize::Decodable::decode(&mut decoder).unwrap())
         }
     }
 
@@ -150,13 +149,18 @@ impl TestServer {
         let req = self.make_request(Post, path);
         let mut stream = req.start().unwrap();
         stream.write(json::encode(request).as_bytes()).unwrap();
+        // TODO(rictic): do something like the following to encode the json
+        // directly onto the wire rather than going through an intermediate
+        // string.
+        // let mut encoder = Encoder::new(&mut stream);
+        // request.encode(&mut encoder).unwrap();
+
         let mut result = stream.send().unwrap();
-        let status = result.status;
-        let body = result.read_to_string().unwrap();
-        if status == status::StatusCode::Ok {
-            Ok(json::decode(body.as_slice()).unwrap())
+        let mut decoder = Decoder::new(json::from_reader(&mut result).unwrap());
+        if result.status == status::StatusCode::Ok {
+            Ok(serialize::Decodable::decode(&mut decoder).unwrap())
         } else {
-            Err(json::decode(body.as_slice()).unwrap())
+            Err(serialize::Decodable::decode(&mut decoder).unwrap())
         }
     }
 
