@@ -363,9 +363,8 @@ handle(Req, State) ->
   {ok, Req4} = cowboy_req:reply(Code, [], Body, Req3),
   {ok, Req4, State}.
 
-init(_, Req, Opts) ->
-  Req2 = handle(Req, Opts),
-  {ok, Req2, Opts}.
+init(_Type, Req, _Opts) ->
+  {ok, Req, no_state}.
 
 terminate(_Reason, _Req, _State) ->
 	ok.
