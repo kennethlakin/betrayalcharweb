@@ -345,31 +345,23 @@ handle(Req, State) ->
   <<_:5/binary, Action/binary>> = Path,
   Args=StockArgs#{action := Action},
   RequestVerification=verifyRequest(Method, Args),
-  case RequestVerification of
+  {Code, Body} = case RequestVerification of
     ok ->
       case Method of
         Method when Method == <<"POST">> orelse Method == <<"GET">> orelse Method == <<"DELETE">> ->
-          Body = handleRequest(Action, Args),
-          {ok, Req4} = cowboy_req:reply(200, [], Body, Req3),
-          {ok, Req4, State};
+          {200, handleRequest(Action, Args)};
         UnsupportedMethod ->
-          Body = <<UnsupportedMethod/binary, " is not supported.">>,
-          {ok, Req4} = cowboy_req:reply(501, [], Body, Req3),
-          {ok, Req4, State}
+          {501, <<UnsupportedMethod/binary, " is not supported.">>}
       end;
     {invalid_method, CorrectMethod} ->
-      Body=jiffy:encode({[{correct_method, CorrectMethod}]}),
-      {ok, Req4} = cowboy_req:reply(405, [], Body, Req3),
-      {ok, Req4, State};
+      {405, jiffy:encode(#{correct_method => CorrectMethod})};
     {invalid_action, ValidActions} ->
-      Body=jiffy:encode({[{valid_actions, ValidActions}]}),
-      {ok, Req4} = cowboy_req:reply(400, [], Body, Req3),
-      {ok, Req4, State};
+      {400, jiffy:encode(#{valid_actions => ValidActions})};
     {missing_args, MissingArgs} ->
-      Body=jiffy:encode({[{missing_args, MissingArgs}]}),
-      {ok, Req4} = cowboy_req:reply(400, [], Body, Req3),
-      {ok, Req4, State}
-  end.
+      {400, jiffy:encode(#{missing_args => MissingArgs})}
+  end,
+  {ok, Req4} = cowboy_req:reply(Code, [], Body, Req3),
+  {ok, Req4, State}.
 
 init(_, Req, Opts) ->
   Req2 = handle(Req, Opts),
