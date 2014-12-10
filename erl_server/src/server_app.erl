@@ -21,8 +21,8 @@ initMnesia(Nodes) ->
 start(_Type, _Args) ->
   %Inject the color and variant atoms into the process, so we can use
   %binary_to_existing_atom later.
-  VALID_COLORS=[<<"purple">>, <<"green">>, <<"white">>, <<"blue">>, <<"red">>, <<"orange">>],
-  VALID_VARIANTS=[<<"front">>, <<"back">>],
+  VALID_COLORS=char_handler:getValidColors(),
+  VALID_VARIANTS=char_handler:getValidVariants(),
   lists:foreach(fun(F) -> binary_to_atom(F, latin1) end, lists:append(VALID_COLORS, VALID_VARIANTS)),
   Dispatch = cowboy_router:compile([
                                     {'_', [

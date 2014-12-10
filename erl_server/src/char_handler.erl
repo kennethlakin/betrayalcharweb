@@ -4,7 +4,9 @@
 -export([
          init/3,
          handle/2,
-         terminate/3
+         terminate/3,
+         getValidColors/0,
+         getValidVariants/0
         ]).
 
 -include("gameRecord.hrl").
@@ -19,6 +21,9 @@
           <<"setcolor">> => #{method => <<"POST">>, args => [gameid, playerid, color, variant]},
           <<"setstats">> => #{method => <<"POST">>, args => [gameid, playerid, speed, might, sanity, knowledge]}
          }).
+
+-define(VALID_COLORS, [<<"purple">>, <<"green">>, <<"white">>, <<"blue">>, <<"red">>, <<"orange">>]).
+-define(VALID_VARIANTS, [<<"front">>, <<"back">>]).
 
 newGameRec(GameID) ->
   #{ gameid => GameID, players => []}.
@@ -37,6 +42,12 @@ newQSRec() ->
 
 getValidActions() ->
   maps:keys(?ACTIONS).
+
+getValidColors() ->
+  ?VALID_COLORS.
+
+getValidVariants() ->
+  ?VALID_VARIANTS.
 
 isValidAction(Action) ->
   maps:is_key(Action, ?ACTIONS).
