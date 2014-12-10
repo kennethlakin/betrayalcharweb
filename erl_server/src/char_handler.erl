@@ -8,9 +8,8 @@
         ]).
 
 -include("gameRecord.hrl").
--include("querystringRecord.hrl").
 
--define(ACTIONS, 
+-define(ACTIONS,
         #{
           <<"kickplayer">> => #{method => <<"DELETE">>, args => [gameid, playerid]},
           <<"getplayers">> => #{method => <<"GET">>, args => [gameid]},
@@ -20,6 +19,21 @@
           <<"setcolor">> => #{method => <<"POST">>, args => [gameid, playerid, color, variant]},
           <<"setstats">> => #{method => <<"POST">>, args => [gameid, playerid, speed, might, sanity, knowledge]}
          }).
+
+newGameRec(GameID) ->
+  #{ gameid => GameID, players => []}.
+
+newPlayerRec(GameID, PlayerID, PlayerName) ->
+  #{ gameid => GameID, playerid => PlayerID, name => PlayerName,
+     color => null, variant => null,
+     speed => null, might => null, sanity => null, knowledge => null }.
+
+newQSRec() ->
+  #{ action => undefined, gameid => undefined,
+     playerid => undefined, playername => undefined,
+     color => undefined, variant => undefined,
+     speed => undefined, might => undefined,
+     sanity => undefined, knowledge => undefined }.
 
 getValidActions() ->
   maps:keys(?ACTIONS).
@@ -31,47 +45,22 @@ getActionArgs(Action) ->
   {ok, Val} = maps:find(Action, ?ACTIONS),
   maps:get(args, Val).
 
-getRec(Rec, Cat) when Cat==action -> Rec#qsRec.action;
-getRec(Rec, Cat) when Cat==gameid -> Rec#qsRec.gameid;
-getRec(Rec, Cat) when Cat==playerid -> Rec#qsRec.playerid;
-getRec(Rec, Cat) when Cat==playername -> Rec#qsRec.playername;
-getRec(Rec, Cat) when Cat==color -> Rec#qsRec.color;
-getRec(Rec, Cat) when Cat==variant -> Rec#qsRec.variant;
-getRec(Rec, Cat) when Cat==speed -> Rec#qsRec.speed;
-getRec(Rec, Cat) when Cat==might -> Rec#qsRec.might;
-getRec(Rec, Cat) when Cat==sanity -> Rec#qsRec.sanity;
-getRec(Rec, Cat) when Cat==knowledge -> Rec#qsRec.knowledge.
-
-setRec(Rec, Cat, Val) when Cat==action -> Rec#qsRec{action = Val};
-setRec(Rec, Cat, Val) when Cat==gameid -> Rec#qsRec{gameid = Val};
-setRec(Rec, Cat, Val) when Cat==playerid -> Rec#qsRec{playerid = Val};
-setRec(Rec, Cat, Val) when Cat==playername -> Rec#qsRec{playername = Val};
-setRec(Rec, Cat, Val) when Cat==color -> Rec#qsRec{color = Val};
-setRec(Rec, Cat, Val) when Cat==variant -> Rec#qsRec{variant = Val};
-setRec(Rec, Cat, Val) when Cat==speed -> Rec#qsRec{speed = Val};
-setRec(Rec, Cat, Val) when Cat==might -> Rec#qsRec{might = Val};
-setRec(Rec, Cat, Val) when Cat==sanity -> Rec#qsRec{sanity = Val};
-setRec(Rec, Cat, Val) when Cat==knowledge -> Rec#qsRec{knowledge = Val}.
-
 getQueryArgs(R) ->
-  QueryArgs=[
-             action, gameid, playerid, playername, color,
-             variant, speed, might, sanity, knowledge
-            ],
-  {QSStuff, NewReq}=lists:foldl(fun(F, {Stuff, Req}) when is_atom(F) ->
-                    {Val, NextReq} = cowboy_req:qs_val(atom_to_binary(F, latin1), Req),
-                    NextStuff=setRec(Stuff, F, Val),
-                    {NextStuff, NextReq}
-              end, 
-              {#qsRec{}, R},
-              QueryArgs),
-  {QSStuff, NewReq}.
+  BaseQueryRec=newQSRec(),
+  {QueryRec, NewReq}=lists:foldl(fun(Key, {QueryRecs, Req}) ->
+                    {Val, NextReq} = cowboy_req:qs_val(atom_to_binary(Key, latin1), Req),
+                    NextQueryRecs=maps:update(Key, Val, QueryRecs),
+                    {NextQueryRecs, NextReq}
+              end,
+              {BaseQueryRec, R},
+              maps:keys(BaseQueryRec)),
+  {QueryRec, NewReq}.
 
 verifyQueryArgs(Action, QueryArgs) ->
   Args=getActionArgs(Action),
   MissingArgList=
     lists:foldl(fun (Arg, ArgAcc) ->
-                    Rec=getRec(QueryArgs, Arg),
+                    Rec=maps:get(Arg, QueryArgs),
                     case Rec==undefined of
                       true ->
                         lists:append(ArgAcc, [Arg]);
@@ -134,7 +123,7 @@ createGame() ->
     {ok, _} ->
       createGame();
     not_found ->
-      GameRec=#gamerec{gameid=GameID, players=[]},
+      GameRec=newGameRec(GameID),
       {atomic, _} = mnesia:transaction(
                         fun() -> mnesia:write({games, GameID, GameRec}) end
                        ),
@@ -161,39 +150,31 @@ findPlayer(GameID, PlayerID) ->
 
 %Creates some eJSON that will be passed to jiffy to be encoded into JSON.
 createPlayerObject(Player) ->
-  Character=Player#player.character,
-  Stats=Character#character.stats,
-  {[{playerid, Player#player.playerid},
-   {name, Player#player.name},
-   {color, Character#character.color},
-   {variant, Character#character.variant},
-   {speed, Stats#stats.speed},
-   {might, Stats#stats.might},
-   {sanity, Stats#stats.sanity},
-   {knowledge, Stats#stats.knowledge}]}.
+  Ret=lists:foldl(fun(Key, Acc) ->
+                   lists:append([{Key, maps:get(Key, Player)}], Acc)
+              end,
+              [],
+              maps:keys(Player)),
+  {Ret}.
 
 addPlayer(GameID, Args) ->
   PlayerID=generatePlayerID(),
   case findPlayer(GameID, PlayerID) of
     not_found ->
       {atomic, {ok, PlayerID}} = mnesia:transaction(
-                        fun() -> 
+                        fun() ->
                             mnesia:lock({table, games}, write),
                             mnesia:lock({table, players}, write),
-                            Key=concatIDs(GameID, PlayerID),
-                            PlayerName=Args#qsRec.playername,
-                            PlayerRec=#playerrec{id=PlayerID, 
-                                                 player=#player{name=PlayerName, gameid=GameID,
-                                                                playerid=PlayerID, character=#character{
-                                                                                               stats=#stats{}}}},
+                            PlayerKey=concatIDs(GameID, PlayerID),
+                            PlayerName=maps:get(playername, Args),
+                            Player=newPlayerRec(GameID, PlayerID, PlayerName),
+
                             GameList=mnesia:read({games, GameID}),
-                            GameRec=element(3, lists:nth(1, GameList)),
-                            GameRecPlayers=GameRec#gamerec.players,
-                            UpdatedGameRec=
-                              GameRec#gamerec{players=
-                                              lists:append(GameRecPlayers, [PlayerRec])},
-                            mnesia:write({games, GameID, UpdatedGameRec}),
-                            mnesia:write({players, Key, PlayerRec}),
+                            Game=element(3, lists:nth(1, GameList)),
+                            GamePlayers=maps:get(players, Game),
+                            UpdatedGame=Game#{players := lists:append(GamePlayers, [Player])},
+                            mnesia:write({games, GameID, UpdatedGame}),
+                            mnesia:write({players, PlayerKey, Player}),
                             {ok, PlayerID}
                         end
                        ),
@@ -203,12 +184,12 @@ addPlayer(GameID, Args) ->
       addPlayer(GameID, Args)
   end.
 
-processDelete(Args) when Args#qsRec.action == <<"kickplayer">> ->
-  PlayerID=Args#qsRec.playerid,
-  GameID=Args#qsRec.gameid,
+handleRequest(Action, Args) when Action == <<"kickplayer">> ->
+  PlayerID=maps:get(playerid, Args),
+  GameID=maps:get(gameid, Args),
   Key=concatIDs(GameID, PlayerID),
   {atomic, Ret} = mnesia:transaction(
-                    fun() -> 
+                    fun() ->
                         mnesia:lock({table, games}, write),
                         mnesia:lock({table, players}, write),
                         case findGame(GameID) of
@@ -217,14 +198,12 @@ processDelete(Args) when Args#qsRec.action == <<"kickplayer">> ->
                               {ok, _} ->
                                 %Remove player from game player array, and from player database.
                                 Game=element(3, GameRec),
-                                GamePlayerList=Game#gamerec.players,
+                                GamePlayerList=maps:get(players, Game),
                                 UpdatedPlayerList=lists:filter(
-                                                    fun(Player) -> 
-                                                        Player#playerrec.player#player.playerid /= PlayerID end, 
+                                                    fun(Player) ->
+                                                        maps:get(playerid, Player) /= PlayerID end,
                                                     GamePlayerList),
-                                UpdatedGame=
-                                Game#gamerec{
-                                  players=UpdatedPlayerList},
+                                UpdatedGame=Game#{players := UpdatedPlayerList},
                                 mnesia:write({games, GameID, UpdatedGame}),
                                 mnesia:delete({players, Key}),
                                 jiffy:encode(<<"ok">>);
@@ -235,24 +214,23 @@ processDelete(Args) when Args#qsRec.action == <<"kickplayer">> ->
                             jiffy:encode({[{error, <<"game_not_found">>}]})
                         end
                     end),
-  Ret.
+  Ret;
 
-processGet(Args) when Args#qsRec.action == <<"getplayers">> ->
-  GameID=Args#qsRec.gameid,
+handleRequest(Action, Args) when Action == <<"getplayers">> ->
+  GameID=maps:get(gameid, Args),
   case findGame(GameID) of
     {ok, GameDBRec} ->
       %Iterate over players in game.
       GameRec=element(3, GameDBRec),
-      GamePlayers=GameRec#gamerec.players,
-      PlayerArr=lists:foldl(fun (GamePlayer, A) -> 
-                                PlayerID=GamePlayer#playerrec.id,
+      GamePlayers=maps:get(players, GameRec),
+      PlayerArr=lists:foldl(fun (GamePlayer, A) ->
+                                PlayerID=maps:get(playerid, GamePlayer),
                                 {ok, PlayerDBRec} = findPlayer(GameID, PlayerID),
-                                PlayerRec=element(3, PlayerDBRec),
-                                Player=PlayerRec#playerrec.player,
+                                Player=element(3, PlayerDBRec),
                                 lists:append([createPlayerObject(Player)], A)
                             end,
                             [], GamePlayers),
-      Ret={[{gameid, GameRec#gamerec.gameid},
+      Ret={[{gameid, maps:get(gameid, GameRec)},
             {<<"players">>, PlayerArr}
           ]},
       jiffy:encode(Ret);
@@ -260,31 +238,30 @@ processGet(Args) when Args#qsRec.action == <<"getplayers">> ->
       jiffy:encode({[{error, <<"game_not_found">>}]})
   end;
 
-processGet(Args) when Args#qsRec.action == <<"getplayer">> ->
-  GameID=Args#qsRec.gameid,
-  PlayerID=Args#qsRec.playerid,
+handleRequest(Action, Args) when Action == <<"getplayer">> ->
+  GameID=maps:get(gameid, Args),
+  PlayerID=maps:get(playerid, Args),
   case findGame(GameID) of
     {ok, _} ->
       case findPlayer(GameID, PlayerID) of
         {ok, PlayerDBRec} ->
-          PlayerRec=element(3, PlayerDBRec),
-          Player=PlayerRec#playerrec.player,
-          jiffy:encode({[{gameid, Player#player.gameid},
+          Player=element(3, PlayerDBRec),
+          jiffy:encode({[{gameid, maps:get(gameid, Player)},
              {<<"player">>, createPlayerObject(Player)}]});
         not_found ->
           jiffy:encode({[{error, <<"player_not_found">>}]})
       end;
     not_found ->
       jiffy:encode({[{error, <<"game_not_found">>}]})
-  end.
+  end;
 
 
-processPost(Args) when Args#qsRec.action == <<"creategame">> ->
+handleRequest(Action, _Args) when Action == <<"creategame">> ->
   GameID=createGame(),
-  jiffy:encode({[{room_code, GameID}]});
+  jiffy:encode({[{gameid, GameID}]});
 
-processPost(Args) when Args#qsRec.action == <<"addplayer">> ->
-  GameID=Args#qsRec.gameid,
+handleRequest(Action, Args) when Action == <<"addplayer">> ->
+  GameID=maps:get(gameid, Args),
   case findGame(GameID) of
     {ok, _} ->
       {ok, PlayerID} = addPlayer(GameID, Args),
@@ -293,65 +270,47 @@ processPost(Args) when Args#qsRec.action == <<"addplayer">> ->
       jiffy:encode({[{error, <<"game_not_found">>}]})
   end;
 
-processPost(Args) when Args#qsRec.action == <<"setcolor">> ->
-  GameID=Args#qsRec.gameid,
-  PlayerID=Args#qsRec.playerid,
+handleRequest(Action, Args) when Action == <<"setcolor">> ->
+  GameID=maps:get(gameid, Args),
+  PlayerID=maps:get(playerid, Args),
   case findPlayer(GameID, PlayerID) of
     {ok, PlayerDBRec} ->
       {atomic, _} = mnesia:transaction(
-                      fun() -> 
+                      fun() ->
                           mnesia:lock({table, players}, write),
-                          %FIXME: Figure out a good way to convert these to
-                          %binary_to_existing_atom
-                          Color=binary_to_atom(Args#qsRec.color, latin1),
-                          Variant=binary_to_atom(Args#qsRec.variant, latin1),
+                          Color=binary_to_existing_atom(maps:get(color, Args), latin1),
+                          Variant=binary_to_existing_atom(maps:get(variant, Args), latin1),
 
-                          PlayerRec=element(3, PlayerDBRec),
-                          Player=PlayerRec#playerrec.player,
-                          Character=Player#player.character,
-                          UpdatedCharacter=Character#character{
-                                             variant=Variant,
-                                             color=Color},
-                          UpdatedPlayer=Player#player{character=UpdatedCharacter},
-                          UpdatedPlayerRec=PlayerRec#playerrec{player=UpdatedPlayer},
+                          Player=element(3, PlayerDBRec),
+                          UpdatedPlayer=Player#{variant := Variant, color := Color},
 
                           PlayerKey=element(2, PlayerDBRec),
-                          mnesia:write({players, PlayerKey, UpdatedPlayerRec})
+                          mnesia:write({players, PlayerKey, UpdatedPlayer})
                       end),
       jiffy:encode(<<"ok">>);
     not_found ->
       jiffy:encode({[{error, <<"player_not_found">>}]})
   end;
 
-processPost(Args) when Args#qsRec.action == <<"setstats">> ->
-  GameID=Args#qsRec.gameid,
-  PlayerID=Args#qsRec.playerid,
+handleRequest(Action, Args) when Action == <<"setstats">> ->
+  GameID=maps:get(gameid, Args),
+  PlayerID=maps:get(playerid, Args),
   {atomic, Ret} = mnesia:transaction(
-                    fun() -> 
+                    fun() ->
                         mnesia:lock({table, players}, write),
                         case findPlayer(GameID, PlayerID) of
                           {ok, PlayerDBRec} ->
-                            %There doesn't really seem to be a way around
-                            %breaking out each component of the record
-                            %and putting them back together.
-                            Speed=binary_to_integer(Args#qsRec.speed),
-                            Might=binary_to_integer(Args#qsRec.might),
-                            Sanity=binary_to_integer(Args#qsRec.sanity),
-                            Knowledge=binary_to_integer(Args#qsRec.knowledge),
+                            Speed=binary_to_integer(maps:get(speed, Args)),
+                            Might=binary_to_integer(maps:get(might, Args)),
+                            Sanity=binary_to_integer(maps:get(sanity, Args)),
+                            Knowledge=binary_to_integer(maps:get(knowledge, Args)),
 
-                            PlayerRec=element(3, PlayerDBRec),
-                            Player=PlayerRec#playerrec.player,
-                            Character=Player#player.character,
-                            UpdatedStats=#stats{speed=Speed,
-                                                might=Might,
-                                                sanity=Sanity,
-                                                knowledge=Knowledge},
-                            UpdatedCharacter=Character#character{stats=UpdatedStats},
-                            UpdatedPlayer=Player#player{character=UpdatedCharacter},
-                            UpdatedPlayerRec=PlayerRec#playerrec{player=UpdatedPlayer},
+                            Player=element(3, PlayerDBRec),
+                            UpdatedPlayer=Player#{speed:=Speed, might:=Might,
+                                                  sanity:=Sanity, knowledge:=Knowledge},
 
                             PlayerKey=element(2, PlayerDBRec),
-                            mnesia:write({players, PlayerKey, UpdatedPlayerRec}),
+                            mnesia:write({players, PlayerKey, UpdatedPlayer}),
                             jiffy:encode(<<"ok">>);
                           not_found ->
                             jiffy:encode({[{error, <<"player_not_found">>}]})
@@ -364,7 +323,7 @@ verifyMethod(Method, Action) ->
   {CorrectMethod == Method, CorrectMethod}.
 
 verifyRequest(Method, Args) ->
-  Action=Args#qsRec.action,
+  Action=maps:get(action, Args),
   case isValidAction(Action) of
     true ->
       case verifyMethod(Method, Action) of
@@ -378,42 +337,31 @@ verifyRequest(Method, Args) ->
   end.
 
 handle(Req, State) ->
-  {Method, Req2} = cowboy_req:method(Req),
-  {Args, Req3}  = getQueryArgs(Req2),
+  {Method, Req1} = cowboy_req:method(Req),
+  {Path, Req2} = cowboy_req:path(Req1),
+  {StockArgs, Req3} = getQueryArgs(Req2),
+  %Methods are in the form /api/action
+  %"/api/" has a length of five.
+  <<_:5/binary, Action/binary>> = Path,
+  Args=StockArgs#{action := Action},
   RequestVerification=verifyRequest(Method, Args),
-  case RequestVerification of
+  {Code, Body} = case RequestVerification of
     ok ->
       case Method of
-        <<"POST">> ->
-          Body = processPost(Args),
-          {ok, Req4} = cowboy_req:reply(200, [], Body, Req3),
-          {ok, Req4, State};
-        <<"GET">> ->
-          Body = processGet(Args),
-          {ok, Req4} = cowboy_req:reply(200, [], Body, Req3),
-          {ok, Req4, State};
-        <<"DELETE">> ->
-          Body = processDelete(Args),
-          {ok, Req4} = cowboy_req:reply(200, [], Body, Req3),
-          {ok, Req4, State};
+        Method when Method == <<"POST">> orelse Method == <<"GET">> orelse Method == <<"DELETE">> ->
+          {200, handleRequest(Action, Args)};
         UnsupportedMethod ->
-          Body = <<UnsupportedMethod/binary, " is not supported.">>,
-          {ok, Req4} = cowboy_req:reply(501, [], Body, Req3),
-          {ok, Req4, State}
+          {501, <<UnsupportedMethod/binary, " is not supported.">>}
       end;
     {invalid_method, CorrectMethod} ->
-      Body=jiffy:encode({[{correct_method, CorrectMethod}]}),
-      {ok, Req4} = cowboy_req:reply(405, [], Body, Req3),
-      {ok, Req4, State};
+      {405, jiffy:encode(#{correct_method => CorrectMethod})};
     {invalid_action, ValidActions} ->
-      Body=jiffy:encode({[{valid_actions, ValidActions}]}),
-      {ok, Req4} = cowboy_req:reply(400, [], Body, Req3),
-      {ok, Req4, State};
+      {400, jiffy:encode(#{valid_actions => ValidActions})};
     {missing_args, MissingArgs} ->
-      Body=jiffy:encode({[{missing_args, MissingArgs}]}),
-      {ok, Req4} = cowboy_req:reply(400, [], Body, Req3),
-      {ok, Req4, State}
-  end.
+      {400, jiffy:encode(#{missing_args => MissingArgs})}
+  end,
+  {ok, Req4} = cowboy_req:reply(Code, [], Body, Req3),
+  {ok, Req4, State}.
 
 init(_, Req, Opts) ->
   Req2 = handle(Req, Opts),
