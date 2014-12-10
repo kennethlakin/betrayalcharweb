@@ -11,10 +11,6 @@ use hyper;
 
 use framework::ErrorResponse;
 
-#[deriving(Decodable, Show)]
-struct CreateGameResponse {
-    room_code: String,
-}
 
 #[deriving(Decodable, Show)]
 struct Player {
@@ -54,6 +50,11 @@ struct Stats {
 }
 
 #[deriving(Decodable, Show)]
+struct CreateGameResponse {
+    gameid: String,
+}
+
+#[deriving(Decodable, Show)]
 struct ListPlayersResponse {
     gameid: String,
     players: Vec<Player>,
@@ -65,8 +66,8 @@ struct JoinRoomResponse {
     playerid: String,
 }
 
-// const DOMAIN : &'static str = "localhost";
-const DOMAIN : &'static str = "10.0.1.76";
+const DOMAIN : &'static str = "localhost";
+// const DOMAIN : &'static str = "10.0.1.76";
 const PORT : u16 = 8080;
 
 #[test]
@@ -144,8 +145,8 @@ fn update_info() {
 
     // TODO - uncomment this
     // ec.pick_color(
-    //     room_code.clone(), player_id.clone(), Color::red, Variant::back)
-    //     .unwrap_err();
+        // room_code.clone(), player_id.clone(), Color::red, Variant::back)
+        // .unwrap_err();
 }
 
 #[test]
@@ -212,12 +213,14 @@ impl ErlClient {
 
     fn do_request<T: Decodable<Decoder, DecoderError>>(&self, method: hyper::method::Method, path: &str, query: &str)
             -> Result<T, ErrorResponse> {
+        println!("{} {}?{}", method, path, query);
         let req = self.make_request(method, path, query);
 
         let mut res = req.start().unwrap().send().unwrap();
         // Read the Response.
         let body = res.read_to_string().unwrap();
 
+        println!("{}: {}", res.status, body);
         if res.status == status::StatusCode::Ok {
             Ok(json::decode(body.as_slice()).unwrap())
         } else {
@@ -227,31 +230,32 @@ impl ErlClient {
 
     fn create_room(&self) -> R<String> {
         self.do_request::<CreateGameResponse>(Post,
-            "character", "action=creategame").map(|resp| resp.room_code)
+            "api/creategame", "").map(|resp| resp.gameid)
     }
 
     fn list_players(&self, room_code: String) -> R<Vec<Player>> {
-        let mut s = "action=getplayers".to_string();
+        let mut s = String::new();
         s.push_str("&gameid=");
         s.push_str(room_code.as_slice());
-        self.do_request::<ListPlayersResponse>(Get, "character", s.as_slice())
+        self.do_request::<ListPlayersResponse>(
+            Get, "api/getplayers", s.as_slice())
             .map(|resp| resp.players)
     }
 
     fn join_room(&self, room_code: String, name: &str) -> R<String> {
-        let mut s = "action=addplayer".to_string();
+        let mut s = String::new();
         s.push_str("&gameid=");
         s.push_str(room_code.as_slice());
         s.push_str("&playername=");
         s.push_str(name);
-        self.do_request::<JoinRoomResponse>(Post, "character", s.as_slice())
+        self.do_request::<JoinRoomResponse>(Post, "api/addplayer", s.as_slice())
             .map(|jrr| jrr.playerid)
     }
 
     fn pick_color(&self,
             room_code: String, player: String, color: Color, variant: Variant)
             -> R<()> {
-        let mut s = "action=setcolor".to_string();
+        let mut s = String::new();
         s.push_str("&gameid=");
         s.push_str(room_code.as_slice());
         s.push_str("&playerid=");
@@ -260,22 +264,23 @@ impl ErlClient {
         s.push_str(color.to_string().as_slice());
         s.push_str("&variant=");
         s.push_str(variant.to_string().as_slice());
-        self.do_request::<String>(Post, "character", s.as_slice()).map(|_| {})
+        self.do_request::<String>(Post, "api/setcolor", s.as_slice())
+            .map(|_| {})
     }
 
     fn kick_player(&self, room_code: String, to_kick: String) -> R<()> {
-        let mut s = "action=kickplayer".to_string();
+        let mut s = String::new();
         s.push_str("&gameid=");
         s.push_str(room_code.as_slice());
         s.push_str("&playerid=");
         s.push_str(to_kick.as_slice());
-        self.do_request::<String>(Delete, "character", s.as_slice())
+        self.do_request::<String>(Delete, "api/kickplayer", s.as_slice())
             .map(|_| {})
     }
 
     fn set_stats(&self,
             room_code: String, player: String, stats: [int, ..4]) -> R<()> {
-        let mut s = "action=setstats".to_string();
+        let mut s = String::new();
         s.push_str("&gameid=");
         s.push_str(room_code.as_slice());
         s.push_str("&playerid=");
@@ -288,6 +293,7 @@ impl ErlClient {
         s.push_str(stats[2].to_string().as_slice());
         s.push_str("&knowledge=");
         s.push_str(stats[3].to_string().as_slice());
-        self.do_request::<String>(Post, "character", s.as_slice()).map(|_| {})
+        self.do_request::<String>(Post, "api/setstats", s.as_slice())
+            .map(|_| {})
     }
 }
