@@ -6,6 +6,7 @@ use std::rand;
 use serialize;
 use serialize::{Encodable, Decodable, json};
 use serialize::json::{Encoder, Decoder, DecoderError};
+use hyper::header::common::content_length::ContentLength;
 use hyper::method::Method::{Get, Post};
 use hyper::client::{Request};
 use hyper::status;
@@ -146,9 +147,12 @@ impl TestServer {
     fn post_request<'a, U: Encodable<Encoder<'a>, io::IoError>,
                     D: Decodable<Decoder, DecoderError>>
                     (&self, path: &str, request: &U) -> R<D> {
-        let req = self.make_request(Post, path);
+        let mut req = self.make_request(Post, path);
+        let response_json = json::encode(request);
+        let bytes = response_json.as_bytes();
+        req.headers_mut().set(ContentLength(bytes.len()));
         let mut stream = req.start().unwrap();
-        stream.write(json::encode(request).as_bytes()).unwrap();
+        stream.write(bytes).unwrap();
         // TODO(rictic): do something like the following to encode the json
         // directly onto the wire rather than going through an intermediate
         // string.

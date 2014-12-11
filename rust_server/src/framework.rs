@@ -6,6 +6,7 @@ use hyper::header::common::content_type;
 use hyper::server::{Request, Response};
 use hyper::status::StatusCode::{BadRequest};
 use hyper::status;
+use hyper::header::common::content_length::ContentLength;
 use mime::{Mime};
 use mime;
 
@@ -74,14 +75,16 @@ pub fn respond_with<'a, T: Encodable<Encoder<'a>, io::IoError>>(
 pub fn write_out(data: &str,
          status: status::StatusCode, mut res: Response
          ) -> Result<(), &'static str> {
+    let bytes = data.as_bytes();
     *res.status_mut() = status;
+    res.headers_mut().set(ContentLength(bytes.len()));
     let r = res.start();
     if r.is_err() {
         return Err("Unable to start response");
     }
     let mut outstream = r.unwrap();
 
-    let maybe_err = outstream.write(data.as_bytes());
+    let maybe_err = outstream.write(bytes);
     if maybe_err.is_err() {
         return Err("Unable to write out");
     }
