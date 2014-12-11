@@ -2,9 +2,9 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -define(DEPS, [crypto, cowlib, ranch, cowboy, mnesia, server, inets]).
--define(HOST, "127.0.0.1").
--define(PORT, "8080").
--define(URL, "http://" ++ ?HOST ++ ":" ++ ?PORT).
+-define(HOST, element(2, application:get_env(server, ip))).
+-define(PORT, integer_to_list(element(2, application:get_env(server, port)))).
+-define(URL, "http://[" ++ ?HOST ++ "]:" ++ ?PORT).
 
 test_runner_test_() ->
   {setup,
@@ -201,10 +201,21 @@ makeRequest(M, URL) when M == get orelse M == delete ->
     httpc:request(M, {URL, []}, [], []).
 
 
+getRandomPort() ->
+  Port=random:uniform(65535),
+  case Port > 1024 of
+    true ->
+      Port;
+    false ->
+      getRandomPort()
+  end.
 
 setup() ->
   {A, B, C} = now(),
   random:seed(A, B, C),
+  Port=getRandomPort(),
+  application:set_env(server, port, Port),
+  application:set_env(server, ip, "127.0.0.1"),
   lists:foreach(fun(F) ->
                     ok=application:ensure_started(F)
                 end, ?DEPS).
