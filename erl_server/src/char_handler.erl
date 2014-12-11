@@ -142,18 +142,20 @@ createGame() ->
   end.
 
 findGame(GameID) ->
-  {atomic, Val} = mnesia:transaction( fun() -> mnesia:read(games, GameID) end),
-  case length(Val) >= 1 of
-    true ->
+  Val = mnesia:dirty_read(games, GameID),
+  Len = length(Val),
+  case Len >= 1 of
+    true when Len == 1 ->
       {ok, lists:nth(1, Val)};
     false ->
       not_found
   end.
 
 findPlayer(GameID, PlayerID) ->
-  {atomic, Val} = mnesia:transaction( fun() -> mnesia:read(players, concatIDs(GameID, PlayerID)) end),
-  case length(Val) >= 1 of
-    true ->
+  Val = mnesia:dirty_read(players, concatIDs(GameID, PlayerID)),
+  Len = length(Val),
+  case Len >= 1 of
+    true when Len == 1 ->
       {ok, lists:nth(1, Val)};
     false ->
       not_found
