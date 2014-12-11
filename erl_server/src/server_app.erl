@@ -3,6 +3,7 @@
 
 -export([start/2]).
 -export([stop/1]).
+-export([doInitOrRestart/0]).
 
 -include("gameRecord.hrl").
 -define(DEFAULT_PORT, 8080).
@@ -70,11 +71,11 @@ doInitOrRestart() ->
   {ok, _} = cowboy:start_http(?BETRAYAL_SERVER_NAME, MaxConns, [{port, Port}, {ip, BindIP}],
                     [{env, [
                             {dispatch, Dispatch}]}]
-                   ),
-	server_sup:start_link().
+                   ).
 
 start(_Type, _Args) ->
-  doInitOrRestart().
+  doInitOrRestart(),
+  server_sup:start_link().
 
 stop(_State) ->
   cowboy:stop_listener(?BETRAYAL_SERVER_NAME),
