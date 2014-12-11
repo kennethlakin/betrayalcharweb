@@ -61,7 +61,10 @@ doInitOrRestart() ->
                                            {"/api/creategame", char_handler, []},
                                            {"/api/addplayer", char_handler, []},
                                            {"/api/setcolor", char_handler, []},
-                                           {"/api/setstats", char_handler, []}
+                                           {"/api/setstats", char_handler, []},
+                                           {"/", cowboy_static, {file, "static/index.html"}},
+                                           {"/components/[...]", cowboy_static, {dir, "static/bower_components/"}},
+                                           {"/[...]", cowboy_static, {dir, "static/"}}
                                           ]}
                                    ]),
   {ok, BindIP}=inet:parse_address(IP),
