@@ -3,11 +3,13 @@
 
 -export([start/2]).
 -export([stop/1]).
+-export([doInitOrRestart/0]).
 
 -include("gameRecord.hrl").
 -define(DEFAULT_PORT, 8080).
 -define(DEFAULT_IP, "::").
 -define(DEFAULT_MAX_CONN, 1000).
+-define(BETRAYAL_SERVER_NAME, betrayal_character_server).
 
 getConfig() ->
   IP=case application:get_env(ip) of
@@ -26,18 +28,25 @@ getConfig() ->
   
 
 initMnesia(Nodes) ->
+  Tables=[games, players],
   ok=mnesia:start(),
-  {atomic,ok}=mnesia:create_table(games, [{attributes, record_info(fields, gamerec)},
-                              {ram_copies, Nodes}
-                             ]
-                    ),
-  {atomic,ok}=mnesia:create_table(players, [{attributes, record_info(fields, playerrec)},
-                              {ram_copies, Nodes}
-                             ]
-                    ),
-  ok=mnesia:wait_for_tables([games, players], 500).
+  case mnesia:wait_for_tables(Tables, 100) of
+    {timeout, _} ->
+      %Our tables are probably not created, so....
+      {atomic,ok}=mnesia:create_table(games, [{attributes, record_info(fields, gamerec)},
+                                              {ram_copies, Nodes}
+                                             ]
+                                     ),
+      {atomic,ok}=mnesia:create_table(players, [{attributes, record_info(fields, playerrec)},
+                                                {ram_copies, Nodes}
+                                               ]
+                                     ),
+      ok=mnesia:wait_for_tables(Tables, 100);
+    ok ->
+      ok
+  end.
 
-start(_Type, _Args) ->
+doInitOrRestart() ->
   {IP, Port, MaxConns}=getConfig(),
   %Inject the color and variant atoms into the process, so we can use
   %binary_to_existing_atom later.
@@ -52,16 +61,25 @@ start(_Type, _Args) ->
                                            {"/api/creategame", char_handler, []},
                                            {"/api/addplayer", char_handler, []},
                                            {"/api/setcolor", char_handler, []},
-                                           {"/api/setstats", char_handler, []}
+                                           {"/api/setstats", char_handler, []},
+                                           {"/", cowboy_static, {file, "static/index.html"}},
+                                           {"/components/[...]", cowboy_static, {dir, "static/bower_components/"}},
+                                           {"/[...]", cowboy_static, {dir, "static/"}}
                                           ]}
                                    ]),
-  initMnesia([node()]),
   {ok, BindIP}=inet:parse_address(IP),
-  {ok, _} = cowboy:start_http(betrayal_character_server, MaxConns, [{port, Port}, {ip, BindIP}],
+  initMnesia([node()]),
+  %Just in case we are restarting, stop any existing listener.
+  cowboy:stop_listener(?BETRAYAL_SERVER_NAME),
+  {ok, _} = cowboy:start_http(?BETRAYAL_SERVER_NAME, MaxConns, [{port, Port}, {ip, BindIP}],
                     [{env, [
                             {dispatch, Dispatch}]}]
-                   ),
-	server_sup:start_link().
+                   ).
+
+start(_Type, _Args) ->
+  doInitOrRestart(),
+  server_sup:start_link().
 
 stop(_State) ->
-	ok.
+  cowboy:stop_listener(?BETRAYAL_SERVER_NAME),
+  ok.

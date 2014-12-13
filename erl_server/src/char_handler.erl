@@ -130,30 +130,54 @@ concatIDs(GameID, PlayerID) ->
 
 createGame() ->
   GameID=generateGameID(),
-  case findGame(GameID) of
+  case fastFindGame(GameID) of
     {ok, _} ->
       createGame();
     not_found ->
       GameRec=newGameRec(GameID),
-      {atomic, _} = mnesia:transaction(
+      {atomic, _} = mnesia:sync_transaction(
                         fun() -> mnesia:write({games, GameID, GameRec}) end
                        ),
       GameID
   end.
 
-findGame(GameID) ->
-  {atomic, Val} = mnesia:transaction( fun() -> mnesia:read(games, GameID) end),
-  case length(Val) >= 1 of
-    true ->
+fastFindGame(GameID) ->
+  Val = mnesia:dirty_read(games, GameID),
+  Len = length(Val),
+  case Len >= 1 of
+    true when Len == 1 ->
       {ok, lists:nth(1, Val)};
     false ->
       not_found
   end.
 
+fastFindPlayer(GameID, PlayerID) ->
+  Val = mnesia:dirty_read(players, concatIDs(GameID, PlayerID)),
+  Len = length(Val),
+  case Len >= 1 of
+    true when Len == 1 ->
+      {ok, lists:nth(1, Val)};
+    false ->
+      not_found
+  end.
+
+%Used when we intend to update the game record in the same transaction.
+findGame(GameID) ->
+  {atomic, Val}= mnesia:transaction(fun() -> mnesia:read(games, GameID, write) end),
+  Len = length(Val),
+  case Len >= 1 of
+    true when Len == 1 ->
+      {ok, lists:nth(1, Val)};
+    false ->
+      not_found
+  end.
+
+%Used when we intend to update the player record in the same transaction.
 findPlayer(GameID, PlayerID) ->
-  {atomic, Val} = mnesia:transaction( fun() -> mnesia:read(players, concatIDs(GameID, PlayerID)) end),
-  case length(Val) >= 1 of
-    true ->
+  {atomic, Val}= mnesia:transaction(fun() -> mnesia:read(players, concatIDs(GameID, PlayerID), write) end),
+  Len = length(Val),
+  case Len >= 1 of
+    true when Len == 1 ->
       {ok, lists:nth(1, Val)};
     false ->
       not_found
@@ -170,12 +194,10 @@ createPlayerObject(Player) ->
 
 addPlayer(GameID, Args) ->
   PlayerID=generatePlayerID(),
-  case findPlayer(GameID, PlayerID) of
+  case fastFindPlayer(GameID, PlayerID) of
     not_found ->
-      {atomic, {ok, PlayerID}} = mnesia:transaction(
+      {atomic, {ok, PlayerID}} = mnesia:sync_transaction(
                         fun() ->
-                            mnesia:lock({table, games}, write),
-                            mnesia:lock({table, players}, write),
                             PlayerKey=concatIDs(GameID, PlayerID),
                             PlayerName=maps:get(playername, Args),
                             Player=newPlayerRec(GameID, PlayerID, PlayerName),
@@ -199,10 +221,8 @@ handleRequest(Action, Args) when Action == <<"kickplayer">> ->
   PlayerID=maps:get(playerid, Args),
   GameID=maps:get(gameid, Args),
   Key=concatIDs(GameID, PlayerID),
-  {atomic, Ret} = mnesia:transaction(
+  {atomic, Ret} = mnesia:sync_transaction(
                     fun() ->
-                        mnesia:lock({table, games}, write),
-                        mnesia:lock({table, players}, write),
                         case findGame(GameID) of
                           {ok, GameRec} ->
                             case findPlayer(GameID, PlayerID) of
@@ -229,14 +249,14 @@ handleRequest(Action, Args) when Action == <<"kickplayer">> ->
 
 handleRequest(Action, Args) when Action == <<"getplayers">> ->
   GameID=maps:get(gameid, Args),
-  case findGame(GameID) of
+  case fastFindGame(GameID) of
     {ok, GameDBRec} ->
       %Iterate over players in game.
       GameRec=element(3, GameDBRec),
       GamePlayers=maps:get(players, GameRec),
       PlayerArr=lists:foldl(fun (GamePlayer, A) ->
                                 PlayerID=maps:get(playerid, GamePlayer),
-                                {ok, PlayerDBRec} = findPlayer(GameID, PlayerID),
+                                {ok, PlayerDBRec} = fastFindPlayer(GameID, PlayerID),
                                 Player=element(3, PlayerDBRec),
                                 lists:append([createPlayerObject(Player)], A)
                             end,
@@ -252,9 +272,9 @@ handleRequest(Action, Args) when Action == <<"getplayers">> ->
 handleRequest(Action, Args) when Action == <<"getplayer">> ->
   GameID=maps:get(gameid, Args),
   PlayerID=maps:get(playerid, Args),
-  case findGame(GameID) of
+  case fastFindGame(GameID) of
     {ok, _} ->
-      case findPlayer(GameID, PlayerID) of
+      case fastFindPlayer(GameID, PlayerID) of
         {ok, PlayerDBRec} ->
           Player=element(3, PlayerDBRec),
           jiffy:encode({[{gameid, maps:get(gameid, Player)},
@@ -266,14 +286,13 @@ handleRequest(Action, Args) when Action == <<"getplayer">> ->
       jiffy:encode({[{error, <<"game_not_found">>}]})
   end;
 
-
 handleRequest(Action, _Args) when Action == <<"creategame">> ->
   GameID=createGame(),
   jiffy:encode({[{gameid, GameID}]});
 
 handleRequest(Action, Args) when Action == <<"addplayer">> ->
   GameID=maps:get(gameid, Args),
-  case findGame(GameID) of
+  case fastFindGame(GameID) of
     {ok, _} ->
       {ok, PlayerID} = addPlayer(GameID, Args),
       jiffy:encode({[{gameid, GameID}, {playerid, PlayerID}]});
@@ -284,31 +303,30 @@ handleRequest(Action, Args) when Action == <<"addplayer">> ->
 handleRequest(Action, Args) when Action == <<"setcolor">> ->
   GameID=maps:get(gameid, Args),
   PlayerID=maps:get(playerid, Args),
-  case findPlayer(GameID, PlayerID) of
-    {ok, PlayerDBRec} ->
-      {atomic, _} = mnesia:transaction(
-                      fun() ->
-                          mnesia:lock({table, players}, write),
-                          Color=binary_to_existing_atom(maps:get(color, Args), latin1),
-                          Variant=binary_to_existing_atom(maps:get(variant, Args), latin1),
+  {atomic, Ret} = mnesia:sync_transaction(
+                    fun() ->
+                        case findPlayer(GameID, PlayerID) of
+                          {ok, PlayerDBRec} ->
+                            Color=binary_to_existing_atom(maps:get(color, Args), latin1),
+                            Variant=binary_to_existing_atom(maps:get(variant, Args), latin1),
 
-                          Player=element(3, PlayerDBRec),
-                          UpdatedPlayer=Player#{variant := Variant, color := Color},
+                            Player=element(3, PlayerDBRec),
+                            UpdatedPlayer=Player#{variant := Variant, color := Color},
 
-                          PlayerKey=element(2, PlayerDBRec),
-                          mnesia:write({players, PlayerKey, UpdatedPlayer})
-                      end),
-      jiffy:encode(<<"ok">>);
-    not_found ->
-      jiffy:encode({[{error, <<"player_not_found">>}]})
-  end;
+                            PlayerKey=element(2, PlayerDBRec),
+                            mnesia:write({players, PlayerKey, UpdatedPlayer}),
+                            jiffy:encode(<<"ok">>);
+                          not_found ->
+                            jiffy:encode({[{error, <<"player_not_found">>}]})
+                        end
+                    end),
+  Ret;
 
 handleRequest(Action, Args) when Action == <<"setstats">> ->
   GameID=maps:get(gameid, Args),
   PlayerID=maps:get(playerid, Args),
-  {atomic, Ret} = mnesia:transaction(
+  {atomic, Ret} = mnesia:sync_transaction(
                     fun() ->
-                        mnesia:lock({table, players}, write),
                         case findPlayer(GameID, PlayerID) of
                           {ok, PlayerDBRec} ->
                             Speed=binary_to_integer(maps:get(speed, Args)),
