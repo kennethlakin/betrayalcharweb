@@ -161,13 +161,18 @@ impl hyper::server::Handler for BetrayalServer {
         match req.uri.clone() {
             uri::RequestUri::AbsolutePath(s) => {
                 let handled = match s.as_slice() {
-                    "/api/create_room" => self.create_room(req, res),
-                    "/api/join_room" => post_response(req, res, |jrr| self.join_room(jrr)),
-                    "/api/list_room" => post_response(req, res, |lrr| self.list_room(lrr)),
-                    "/api/pick_color" => post_response(req, res, |pcr| self.pick_color(pcr)),
-                    "/api/kick_player" => post_response(req, res, |kpr| self.kick_player(kpr)),
-                    "/api/set_stats" => write_out(
-                        "Not implemented\n", NotImplemented, res),
+                    "/api/create_room" =>
+                        self.create_room(req, res),
+                    "/api/join_room" =>
+                        post_response(req, res, |jrr| self.join_room(jrr)),
+                    "/api/list_room" =>
+                        post_response(req, res, |lrr| self.list_room(lrr)),
+                    "/api/pick_color" =>
+                        post_response(req, res, |pcr| self.pick_color(pcr)),
+                    "/api/kick_player" =>
+                        post_response(req, res, |kpr| self.kick_player(kpr)),
+                    "/api/set_stats" =>
+                        write_out("Not implemented\n", NotImplemented, res),
                     _ => write_out("Not found\n", NotFound, res),
                 };
                 if handled.is_err() {
