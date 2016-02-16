@@ -6,3 +6,4 @@ erl_server/deps
 erl_server/ebin
 rust_server/target
 betrayal.sublime-*
+*.pyc
