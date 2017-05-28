@@ -17,9 +17,12 @@ test_runner_test_() ->
     fun canAddPlayer/0,
     fun canAddPlayers/0,
     fun addedPlayerIsInGame/0,
+    fun addPlayerWithSameNameFails/0,
     fun canKickPlayer/0,
     fun playerIsKicked/0,
     fun canSetColor/0,
+    fun canSetColorToNull/0,
+    fun canMultiSetColorToNull/0,
     fun colorIsSet/0,
     fun canSetStats/0,
     fun statsAreSet/0
@@ -51,6 +54,13 @@ addedPlayerIsInGame() ->
   Player=getPlayer(GameID, PlayerID),
   ?assertEqual(PlayerID, maps:get(<<"playerid">>, Player)).
 
+addPlayerWithSameNameFails() ->
+  GameID=createGame(),
+  R1=callAddPlayer(GameID, <<"one">>),
+  ?assertEqual(GameID, maps:get(<<"gameid">>, R1)),
+  R2=callAddPlayer(GameID, <<"one">>),
+  ?assertEqual(<<"name_already_taken">>, maps:get(<<"error">>, R2)).
+
 canKickPlayer() ->
   {GameID, PlayerID} = createPlayer(<<"Player%20Name">>),
   Ret=callKickPlayer(GameID, PlayerID),
@@ -71,26 +81,33 @@ playerIsKicked() ->
 canSetColor() ->
   {GameID, PlayerID} = createPlayer(<<"Player%20Name">>),
   lists:foreach(fun(Color) -> 
-                    lists:foreach(fun(Variant) ->
-                                      Resp=callSetColor(GameID, PlayerID, Color, Variant),
-                                      ?assertEqual(<<"ok">>, Resp)
-                                   end,
-                                   char_handler:getValidVariants())
+                    Resp=callSetColor(GameID, PlayerID, Color, <<"front">>),
+                    ?assertEqual(<<"ok">>, Resp)
                 end,
                 char_handler:getValidColors()).
 
 colorIsSet() ->
   {GameID, PlayerID} = createPlayer(<<"Player%20Name">>),
   lists:foreach(fun(Color) -> 
-                    lists:foreach(fun(Variant) ->
-                                      callSetColor(GameID, PlayerID, Color, Variant),
-                                      Player=getPlayer(GameID, PlayerID),
-                                      ?assertEqual(Color, maps:get(<<"color">>, Player)),
-                                      ?assertEqual(Variant, maps:get(<<"variant">>, Player))
-                                   end,
-                                   char_handler:getValidVariants())
+                    callSetColor(GameID, PlayerID, Color, <<"back">>),
+                    Player=getPlayer(GameID, PlayerID),
+                    ?assertEqual(Color, maps:get(<<"color">>, Player)),
+                    ?assertEqual(<<"back">>, maps:get(<<"variant">>, Player))
                 end,
                 char_handler:getValidColors()).
+
+canSetColorToNull() ->
+  {GameID, PlayerID} = createPlayer(<<"Player%20Name">>),
+  Resp=callSetColor(GameID, PlayerID, <<"null">>, <<"null">>),
+  ?assertEqual(<<"ok">>, Resp).
+
+canMultiSetColorToNull() ->
+  {GameID, P1} = createPlayer(<<"Player%20Name">>),
+  P2 = addPlayer(GameID, <<"Player%20name">>),
+  R1=callSetColor(GameID, P1, <<"null">>, <<"null">>),
+  ?assertEqual(<<"ok">>, R1),
+  R2=callSetColor(GameID, P2, <<"null">>, <<"null">>),
+  ?assertEqual(<<"ok">>, R2).
 
 canSetStats() ->
   {GameID, PlayerID} = createPlayer(<<"Player">>),
