@@ -183,6 +183,15 @@ findPlayer(GameID, PlayerID) ->
       not_found
   end.
 
+extractPlayers(GameID, GamePlayers) ->
+  lists:foldl(fun (GamePlayer, A) ->
+                  PlayerID=maps:get(playerid, GamePlayer),
+                  {ok, PlayerDBRec} = fastFindPlayer(GameID, PlayerID),
+                  Player=element(3, PlayerDBRec),
+                  lists:append([createPlayerObject(Player)], A)
+              end,
+              [], GamePlayers).
+
 %Creates some eJSON that will be passed to jiffy to be encoded into JSON.
 createPlayerObject(Player) ->
   Ret=lists:foldl(fun(Key, Acc) ->
@@ -192,29 +201,55 @@ createPlayerObject(Player) ->
               maps:keys(Player)),
   {Ret}.
 
-addPlayer(GameID, Args) ->
+findConflicting(Things, ValueToCheck, GameID, Players) when length(Things) == length(ValueToCheck) ->
+  findConflicting(Things, ValueToCheck, GameID, Players, #{}).
+findConflicting([], [], _GameID, _Players, Acc) ->
+  Acc;
+findConflicting([Thing|TRest], [ValueToCheck|VRest], GameID, Players, Acc) when length(TRest) == length(VRest) ->
+  List=lists:filter(fun(P) ->
+                   GamePlayerID=maps:get(playerid, P),
+                   {ok, PlayerRec}=fastFindPlayer(GameID, GamePlayerID),
+                   GamePlayer=element(3, PlayerRec),
+                   maps:get(Thing, GamePlayer) == ValueToCheck
+               end, Players),
+  false=maps:is_key(Thing, Acc),
+  NewAcc=maps:put(Thing, List, Acc),
+  findConflicting(TRest, VRest, GameID, Players, NewAcc).
+
+
+addPlayer(GameRec, Args) ->
+  Game=element(3, GameRec),
+  GameID=maps:get(gameid, Game),
   PlayerID=generatePlayerID(),
   case fastFindPlayer(GameID, PlayerID) of
     not_found ->
-      {atomic, {ok, PlayerID}} = mnesia:sync_transaction(
+      {atomic, {Reason, Response}} = mnesia:sync_transaction(
                         fun() ->
+                            %get a write lock on the game.
+                            {ok, _}=findGame(GameID),
                             PlayerKey=concatIDs(GameID, PlayerID),
                             PlayerName=maps:get(playername, Args),
-                            Player=newPlayerRec(GameID, PlayerID, PlayerName),
-
-                            GameList=mnesia:read({games, GameID}),
-                            Game=element(3, lists:nth(1, GameList)),
-                            GamePlayers=maps:get(players, Game),
-                            UpdatedGame=Game#{players := lists:append(GamePlayers, [Player])},
-                            mnesia:write({games, GameID, UpdatedGame}),
-                            mnesia:write({players, PlayerKey, Player}),
-                            {ok, PlayerID}
+                            Players=maps:get(players, Game),
+                            ConflictingNames=maps:get(name,
+                                                      findConflicting([name], [PlayerName], GameID, Players)
+                                                     ),
+                            case ConflictingNames == [] of
+                              false ->
+                                {error, <<"name_already_taken">>};
+                              true ->
+                                Player=newPlayerRec(GameID, PlayerID, PlayerName),
+                                GamePlayers=maps:get(players, Game),
+                                UpdatedGame=Game#{players := lists:append(GamePlayers, [Player])},
+                                mnesia:write({games, GameID, UpdatedGame}),
+                                mnesia:write({players, PlayerKey, Player}),
+                                {ok, PlayerID}
+                            end
                         end
                        ),
-      {ok, PlayerID};
+      {Reason, Response};
     %If that playerID is in this game, create a new ID and retry.
     {ok, _} ->
-      addPlayer(GameID, Args)
+      addPlayer(GameRec, Args)
   end.
 
 handleRequest(Action, Args) when Action == <<"kickplayer">> ->
@@ -247,6 +282,7 @@ handleRequest(Action, Args) when Action == <<"kickplayer">> ->
                     end),
   Ret;
 
+
 handleRequest(Action, Args) when Action == <<"getplayers">> ->
   GameID=maps:get(gameid, Args),
   case fastFindGame(GameID) of
@@ -254,13 +290,7 @@ handleRequest(Action, Args) when Action == <<"getplayers">> ->
       %Iterate over players in game.
       GameRec=element(3, GameDBRec),
       GamePlayers=maps:get(players, GameRec),
-      PlayerArr=lists:foldl(fun (GamePlayer, A) ->
-                                PlayerID=maps:get(playerid, GamePlayer),
-                                {ok, PlayerDBRec} = fastFindPlayer(GameID, PlayerID),
-                                Player=element(3, PlayerDBRec),
-                                lists:append([createPlayerObject(Player)], A)
-                            end,
-                            [], GamePlayers),
+      PlayerArr=extractPlayers(GameID, GamePlayers),
       Ret={[{gameid, maps:get(gameid, GameRec)},
             {<<"players">>, PlayerArr}
           ]},
@@ -293,9 +323,13 @@ handleRequest(Action, _Args) when Action == <<"creategame">> ->
 handleRequest(Action, Args) when Action == <<"addplayer">> ->
   GameID=maps:get(gameid, Args),
   case fastFindGame(GameID) of
-    {ok, _} ->
-      {ok, PlayerID} = addPlayer(GameID, Args),
-      jiffy:encode({[{gameid, GameID}, {playerid, PlayerID}]});
+    {ok, GameRec} ->
+      case addPlayer(GameRec, Args) of
+      {ok, PlayerID} ->
+          jiffy:encode({[{gameid, GameID}, {playerid, PlayerID}]});
+      {error, Resp} ->
+          jiffy:encode({[{error, Resp}]})
+      end;
     not_found ->
       jiffy:encode({[{error, <<"game_not_found">>}]})
   end;
@@ -310,12 +344,24 @@ handleRequest(Action, Args) when Action == <<"setcolor">> ->
                             Color=binary_to_existing_atom(maps:get(color, Args), latin1),
                             Variant=binary_to_existing_atom(maps:get(variant, Args), latin1),
 
-                            Player=element(3, PlayerDBRec),
-                            UpdatedPlayer=Player#{variant := Variant, color := Color},
+                            {ok, GameRec}=fastFindGame(GameID),
+                            Game=element(3, GameRec),
+                            Players=maps:get(players, Game),
+                            %Find Players with the same color, but ignore
+                            %players with a color that's set to null.
+                            Conflicts=maps:get(color, findConflicting([color], [Color], GameID, Players)),
+                            FilteredConflicts=lists:filter(fun(C) -> maps:get(color, C) /= null end, Conflicts),
+                            case FilteredConflicts == [] of
+                              false ->
+                                jiffy:encode({[{error, <<"color_already_taken">>}]});
+                              true ->
+                              Player=element(3, PlayerDBRec),
+                              UpdatedPlayer=Player#{variant := Variant, color := Color},
 
-                            PlayerKey=element(2, PlayerDBRec),
-                            mnesia:write({players, PlayerKey, UpdatedPlayer}),
-                            jiffy:encode(<<"ok">>);
+                              PlayerKey=element(2, PlayerDBRec),
+                              mnesia:write({players, PlayerKey, UpdatedPlayer}),
+                              jiffy:encode(<<"ok">>)
+                            end;
                           not_found ->
                             jiffy:encode({[{error, <<"player_not_found">>}]})
                         end
