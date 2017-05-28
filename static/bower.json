@@ -15,8 +15,8 @@
     "tests"
   ],
   "dependencies": {
-    "polymer": "~0.5.1",
-    "font-roboto": "Polymer/font-roboto#~0.5.1",
-    "core-animated-pages": "Polymer/core-animated-pages#~0.5.1"
+    "polymer": "polymer/polymer#~1.2.4",
+    "font-roboto": "polymerelements/font-roboto#~1.0.1",
+    "iron-flex-layout": "polymerelements/iron-flex-layout#~1.2.3"
   }
 }

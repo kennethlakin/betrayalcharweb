@@ -1,30 +1,25 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset='utf-8'>
+<!DOCTYPE html><html><head>
+  <meta charset="utf-8">
   <title>Betrayal House!</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name='theme-color' content='#000'>
+  <meta name="theme-color" content="#000">
   <meta name="mobile-web-app-capable" content="yes">
 
   <link rel="icon" href="/icons/icon.jpg">
   <link rel="shortcut icon" href="/icons/icon.jpg">
-  <link rel='icon' sizes='192x192' href='/icons/icon-192.jpg'>
-  <link rel='icon' sizes='128x128' href='/icons/icon-128.jpg'>
-  <link rel='apple-touch-icon' sizes='128x128' href='/icons/icon-128.jpg'>
-  <link rel='apple-touch-icon-precomposed' sizes='128x128'
-        href='/icons/icon-128.jpg'>
+  <link rel="icon" sizes="192x192" href="/icons/icon-192.jpg">
+  <link rel="icon" sizes="128x128" href="/icons/icon-128.jpg">
+  <link rel="apple-touch-icon" sizes="128x128" href="/icons/icon-128.jpg">
+  <link rel="apple-touch-icon-precomposed" sizes="128x128" href="/icons/icon-128.jpg">
 
-  <link rel='manifest' href='/manifest.json'>
+  <link rel="manifest" href="/manifest.json">
 
-  <script src='/components/webcomponentsjs/webcomponents.js'></script>
-  <link rel='import' href='/components/polymer/polymer.html'>
-  <link rel='import' href='/components/font-roboto/roboto.html'>
-  <link rel='import'
-      href='/components/core-animated-pages/core-animated-pages.html' >
-  <link rel='import'
-      href='/components/core-animated-pages/transitions/slide-from-right.html' >
-  <style shim-shadowdom>
+  <script src="/components/webcomponentsjs/webcomponents-lite.js"></script>
+  <link rel="import" href="/components/polymer/polymer.html">
+  <link rel="import" href="/components/font-roboto/roboto.html">
+  <link rel="import" href="/components/neon-animation/neon-animated-pages.html">
+  <link rel="import" href="/components/neon-animation/animations/slide-from-right-animation.html">
+  <style shim-shadowdom="">
     body {
       font-family: 'RobotoDraft';
       background-color: rgba(0, 0, 0, 1);
@@ -76,32 +71,42 @@
       background-color: orange;
     }
   </style>
+  <style is="custom-style">
+    /* TODO(polyup): For speed, consider reworking these styles with .classes
+                     and #ids rather than [attributes].
+    */
+    [fullbleed] {
+      margin: 0;
+      height:100vh;
+    }
+  </style>
+  <link rel="import" href="/components/iron-flex-layout/iron-flex-layout.html">
 </head>
 
-<body unresolved fullbleed>
-<polymer-element name='betrayal-house-landing'>
+<body unresolved="" fullbleed="">
+<dom-module id="betrayal-house-landing">
   <template>
     <button>New Game</button>
     <button>Join Game</button>
     <button>Offline</button>
   </template>
   <script>
-    Polymer('betrayal-house-landing', {});
+    Polymer({ is: 'betrayal-house-landing' });
   </script>
-</polymer-element>
+</dom-module>
 
-<polymer-element name='betrayal-house-newgame'>
+<dom-module id="betrayal-house-newgame">
   <template>
     <label>Your nickname:</label>
     <input>
     <button>Ok</button>
   </template>
   <script>
-    Polymer('betrayal-house-newgame', {});
+    Polymer({ is: 'betrayal-house-newgame' });
   </script>
-</polymer-element>
+</dom-module>
 
-<polymer-element name='betrayal-house-joingame'>
+<dom-module id="betrayal-house-joingame">
   <template>
     <label>Your nickname:</label>
     <input>
@@ -110,11 +115,22 @@
     <button>Ok</button>
   </template>
   <script>
-    Polymer('betrayal-house-joingame', {});
+    Polymer({ is: 'betrayal-house-joingame' });
   </script>
-</polymer-element>
+</dom-module>
 
-<polymer-element name='betrayal-house-choose-character' attributes='character characters'>
+<dom-module id="betrayal-house-choose-character">
+  <style>
+    /* TODO(polyup): For speed, consider reworking these styles with .classes
+                     and #ids rather than [attributes].
+    */
+    [layout] {
+      @apply(--layout);
+    }
+    [layout][horizontal] {
+      @apply(--layout-horizontal);
+    }
+  </style>
   <template>
     <style>
       header {
@@ -138,22 +154,21 @@
     <header>
       Who are you?
     </header>
-    <template repeat='[[char in characters]]'>
-      <div class='character' charcolor='[[char.color]]' layout horizontal>
-        <div><img height='152' width='152' on-tap='[[selectCharacter]]'
-                  src='[[char.image]]'></div>
+    <template is="dom-repeat" as="char" items="{{characters}}">
+      <div class="character" charcolor="[[char.color]]" layout="" horizontal="">
+        <div><img height="152" width="152" on-tap="[[selectCharacter]]" src="[[char.image]]"></div>
         <div>
-          <div class='name' on-tap='[[selectCharacter]]'>[[char.name]]</div>
-          <div>[[char.height]], [[char.weight]]lbs, [[char.age]] years old</div>
-          <div>Hobbies: [[char.hobbies]]</div>
+          <div class="name" on-tap="[[selectCharacter]]">{{char.name}}</div>
+          <div><span>{{char.height}}</span>, <span>{{char.weight}}</span>lbs, <span>{{char.age}}</span> years old</div>
+          <div>Hobbies: <span>{{char.hobbies}}</span></div>
           <div>
-            <template repeat='[[idx in [0,1,2,3] ]]'>
+            <template is="dom-repeat">
               <div>
-                <span class='statName'>[[statNames[idx] ]]</span>
+                <span class="statName">{{_computeExpression6(idx, statNames)}}</span>
                 <span>
-                  <template repeat='[[val, i in char.statRanges[idx] ]]'>
-                    <span highlight?='[[i == char.initialStatIndexes[idx] ]]'>
-                      [[val]]
+                  <template is="dom-repeat">
+                    <span highlight$="[[_computeInitial(char, i, idx)]]">
+                      <span>{{val}}</span>
                     </span>
                   </template>
                 </span>
@@ -165,17 +180,58 @@
     </template>
   </template>
   <script>
-    Polymer('betrayal-house-choose-character', {
-      selectCharacter: function(ev, val, elmnt) {
+    Polymer({
+      is: 'betrayal-house-choose-character',
+      properties: {
+        character: { notify: true },
+        characters: { notify: true },
+        statNames: {
+          type: Array,
+          value: function () {
+            return [
+              'Speed',
+              'Might',
+              'Sanity',
+              'Knowledge'
+            ];
+          }
+        }
+      },
+      selectCharacter: function (ev, val, elmnt) {
         this.character = elmnt.templateInstance.model.char;
         this.fire('betrayal-character-chosen', this.character);
       },
-      statNames: ["Speed", "Might", "Sanity", "Knowledge"],
+      _computeInitial: function (char, i, idx) {
+        return i == char.initialStatIndexes[idx];
+      },
+      _computeExpression6: function (idx, statNames) {
+        return statNames[idx];
+      }
     });
   </script>
-</polymer-element>
+</dom-module>
 
-<polymer-element name='betrayal-house-character-page' attributes='character'>
+<dom-module id="betrayal-house-character-page">
+  <style>
+    /* TODO(polyup): For speed, consider reworking these styles with .classes
+                     and #ids rather than [attributes].
+    */
+    [layout] {
+      @apply(--layout);
+    }
+    [layout][vertical] {
+      @apply(--layout-vertical);
+    }
+    [layout][justified] {
+      @apply(--layout-justified);
+    }
+    [layout][center] {
+      @apply(--layout-center);
+    }
+    [layout][horizontal] {
+      @apply(--layout-horizontal);
+    }
+  </style>
   <template>
     <style>
       :host {
@@ -228,90 +284,110 @@
         color: white;
       }
     </style>
-    <div class='main' charcolor='{{char.color}}' layout vertical justified>
+    <div class="main" charcolor="{{char.color}}" layout="" vertical="" justified="">
       <div>
-        <div class='back-button' on-tap='{{goBack}}'>&lt; Back</div>
-        <div class='name' on-tap='{{selectCharacter}}'>{{char.name}}</div>
-        <div>{{char.height}}, {{char.weight}}lbs, {{char.age}} years old</div>
-        <div>Hobbies: {{char.hobbies}}</div>
+        <div class="back-button" on-tap="goBack">&lt; Back</div>
+        <div class="name" on-tap="selectCharacter">{{char.name}}</div>
+        <div><span>{{char.height}}</span>, <span>{{char.weight}}</span>lbs, <span>{{char.age}}</span> years old</div>
+        <div>Hobbies: <span>{{char.hobbies}}</span></div>
       </div>
-      <template repeat='{{idx in [0,1,2,3]}}'>
-        <div class='stat' layout vertical center>
-          <span class='statName'>{{statNames[idx]}}</span>
-          <span class='statVals' layout horizontal justified>
-            <button charBgColor on-tap='{{buttonTapped}}'>&lt;</button>
+      <template is="dom-repeat" items="{{_computeItems()}}" as="idx">
+        <div class="stat" layout="" vertical="" center="">
+          <span class="statName">{{_computeExpression6(idx, statNames)}}</span>
+          <span class="statVals" layout="" horizontal="" justified="">
+            <button charbgcolor="" on-tap="buttonTapped">&lt;</button>
 
-            <div highlight?='{{-1 == char.statIndexes[idx]}}'>
+            <div highlight$="{{_computeHighlight(char, idx)}}">
               ✘
             </div>
-            <template repeat='{{val, i in char.statRanges[idx]}}'>
-              <div highlight?='{{i == char.statIndexes[idx]}}'
-                   initial?='{{i == char.initialStatIndexes[idx]}}'>
-                {{val}}
-                <template if='{{i ===7}}'>
-                  <sup class='bonusValue'
-                       hidden?='{{char.statBonusValue[idx] == 0}}'>
-                    [{{char.statBonusValue[idx]}}]
-                  </div>
-                </template>
+            <template is="dom-repeat" items="{{_computeItems(char, idx)}}" as="val" index-as="{{_computeItems2(char, idx)}}">
+              <div highlight$="{{_computeHighlight(char, i, idx)}}" initial$="{{_computeHighlight2(char, i, idx)}}">
+                <span>{{val}}</span>
+                <template is="dom-if" if="{{_computeIf(i)}}">
+                  <sup class="bonusValue" hidden$="{{_computeHidden(char, idx)}}">
+                    [<span>{{_computeExpression8(char, idx)}}</span>]
+
+                </sup></template>
               </div>
             </template>
-            <button charBgColor on-tap='{{buttonTapped}}'>&gt;</button>
+            <button charbgcolor="" on-tap="buttonTapped">&gt;</button>
           </span>
         </div>
       </template>
     </div>
   </template>
   <script>
-    Polymer('betrayal-house-character-page', {
-      computed: {
-        'char': 'character',
-        'dead': 'isDead(character.statIndexes)'
+    //TODO(polyup): Need to add an observer of character.statIndexes, calling saveToStorage.
+    //Note that the semantics for observing properties and arrays has changed.
+    //TODO(polyup): Need to add an observer of character.statBonusValue, calling saveToStorage.
+    //Note that the semantics for observing properties and arrays has changed.
+    Polymer({
+      is: 'betrayal-house-character-page',
+      properties: {
+        char: { computed: 'character' },
+        character: {
+          notify: true,
+          observer: 'characterChanged'
+        },
+        dead: {
+          observer: 'deadChanged',
+          computed: 'isDead(character.statIndexes)'
+        },
+        statNames: {
+          type: Array,
+          value: function () {
+            return [
+              'Speed',
+              'Might',
+              'Sanity',
+              'Knowledge'
+            ];
+          }
+        }
       },
-      observe: {
-        'character.statIndexes character.statBonusValue': 'saveToStorage'
-      },
-      statNames: ["Speed", "Might", "Sanity", "Knowledge"],
-      created: function() {
-        this.storage =
-            window.localStorage['betrayal-house-character-page-storage'];
+      created: function () {
+        this.storage = window.localStorage['betrayal-house-character-page-storage'];
         try {
           this.storage = JSON.parse(this.storage || '{}');
-        } catch(_) {
+        } catch (_) {
           this.storage = {};
         }
       },
-      saveToStorage: function() {
+      saveToStorage: function () {
         if (this.character && this.character.statIndexes) {
-          this.storage[this.character.name] = {
+          this.set('storage' + ('.' + this.character.name), {
             statIndexes: this.character.statIndexes,
             statBonusValue: this.character.statBonusValue
-          };
-          window.localStorage['betrayal-house-character-page-storage'] =
-              JSON.stringify(this.storage);
+          });
+          window.localStorage['betrayal-house-character-page-storage'] = JSON.stringify(this.storage);
         }
       },
-      characterChanged: function() {
+      characterChanged: function () {
         if (!(this.character.name in this.storage)) {
-          this.storage[this.character.name] = {
+          this.set('storage' + ('.' + this.character.name), {
             statIndexes: this.character.initialStatIndexes.slice(),
-            statBonusValue: [0, 0, 0, 0]
-          }
+            statBonusValue: [
+              0,
+              0,
+              0,
+              0
+            ]
+          });
         }
         var characterStorage = this.storage[this.character.name];
-        this.character.statIndexes = characterStorage.statIndexes;
-        this.character.statBonusValue = characterStorage.statBonusValue;
+        this.set('character.statIndexes', characterStorage.statIndexes);
+        this.set('character.statBonusValue', characterStorage.statBonusValue);
       },
-      goBack: function() {
-        this.fire('betrayal-go-back')
-        document.body.removeAttribute('dead');
+      goBack: function () {
+        this.fire('betrayal-go-back');
+        Polymer.dom(document.body).removeAttribute('dead');
       },
-      buttonTapped: function(ev, val, elmnt) {
+      buttonTapped: function (ev, val, elmnt) {
         var whichStat = elmnt.templateInstance.model.idx;
-        this.character.statIndexes = this.character.statIndexes.slice();
-        this.character.statBonusValue = this.character.statBonusValue.slice();
+        this.set('character.statIndexes', this.character.statIndexes.slice());
+        this.set('character.statBonusValue', this.character.statBonusValue.slice());
         var statIndexes = this.character.statIndexes;
-        if (elmnt.textContent.trim() === '<') {
+        if (Polymer.dom(elmnt).textContent.trim() === '<') {
           if (this.character.statBonusValue[whichStat] > 0) {
             this.character.statBonusValue[whichStat]--;
           } else {
@@ -325,7 +401,7 @@
           }
         }
       },
-      isDead: function(statIndexes) {
+      isDead: function (statIndexes) {
         if (!statIndexes) {
           return false;
         }
@@ -336,236 +412,794 @@
         }
         return false;
       },
-      deadChanged: function() {
+      deadChanged: function () {
         if (this.dead) {
-          document.body.setAttribute('dead', 'dead')
+          Polymer.dom(document.body).setAttribute('dead', 'dead');
         } else {
-          document.body.removeAttribute('dead')
+          Polymer.dom(document.body).removeAttribute('dead');
         }
+      },
+      _computeItems: function () {
+        return [
+          0,
+          1,
+          2,
+          3
+        ];
+      },
+      _computeHighlight: function (char, idx) {
+        return -1 == char.statIndexes[idx];
+      },
+      _computeItems2: function (char, idx) {
+        return char.statRanges[idx];
+      },
+      _computeHighlight2: function (char, i, idx) {
+        return i == char.statIndexes[idx];
+      },
+      _computeInitial: function (char, i, idx) {
+        return i == char.initialStatIndexes[idx];
+      },
+      _computeIf: function (i) {
+        return i === 7;
+      },
+      _computeHidden: function (char, idx) {
+        return char.statBonusValue[idx] == 0;
+      },
+      _computeExpression6: function (idx, statNames) {
+        return statNames[idx];
+      },
+      _computeExpression8: function (char, idx) {
+        return char.statBonusValue[idx];
       }
     });
   </script>
-</polymer-element>
+</dom-module>
 
-<polymer-element name='betrayal-house-app'>
+<dom-module id="betrayal-house-app">
   <template>
-    <core-animated-pages transitions="slide-from-right" selected='{{selected}}'>
+    <neon-animated-pages transitions="slide-from-right" selected="{{selected}}">
       <section>
-        <betrayal-house-choose-character characters='[[characters]]'
-                                         character='{{character}}'>
+        <betrayal-house-choose-character characters="[[characters]]" character="{{character}}">
         </betrayal-house-choose-character>
       </section>
       <section>
-        <betrayal-house-character-page character='{{selectedCharacter}}'
-                                       on-betrayal-go-back='{{goBack}}'>
+        <betrayal-house-character-page character="{{selectedCharacter}}" on-betrayal-go-back="goBack">
         </betrayal-house-character-page>
       </section>
-    </core-animated-pages>
+    </neon-animated-pages>
   </template>
   <script>
-    Polymer('betrayal-house-app', {
-      selected: 0,
-      created: function() {
+    Polymer({
+      is: 'betrayal-house-app',
+      properties: {
+        character: { observer: 'characterChanged' },
+        characters: {
+          type: Array,
+          value: function () {
+            return [
+              {
+                image: '/images/heather.png',
+                name: 'Heather Granville',
+                color: 'purple',
+                birthday: 'August 2nd',
+                age: 18,
+                height: '5\'2',
+                hobbies: 'Television, Shopping',
+                weight: 120,
+                statRanges: [
+                  [
+                    3,
+                    3,
+                    4,
+                    5,
+                    6,
+                    6,
+                    7,
+                    8
+                  ],
+                  [
+                    3,
+                    3,
+                    3,
+                    4,
+                    5,
+                    6,
+                    7,
+                    8
+                  ],
+                  [
+                    3,
+                    3,
+                    3,
+                    4,
+                    5,
+                    6,
+                    6,
+                    6
+                  ],
+                  [
+                    2,
+                    3,
+                    3,
+                    4,
+                    5,
+                    6,
+                    7,
+                    8
+                  ]
+                ],
+                initialStatIndexes: [
+                  2,
+                  2,
+                  2,
+                  4
+                ]
+              },
+              {
+                image: '/images/jenny.png',
+                name: 'Jenny LeClerc',
+                color: 'purple',
+                birthday: 'March 4th',
+                age: 21,
+                height: '5\'7',
+                hobbies: 'Reading, Soccer',
+                weight: 142,
+                statRanges: [
+                  [
+                    2,
+                    3,
+                    4,
+                    4,
+                    4,
+                    5,
+                    6,
+                    8
+                  ],
+                  [
+                    3,
+                    4,
+                    4,
+                    4,
+                    4,
+                    5,
+                    6,
+                    8
+                  ],
+                  [
+                    1,
+                    1,
+                    2,
+                    4,
+                    4,
+                    4,
+                    5,
+                    6
+                  ],
+                  [
+                    2,
+                    3,
+                    3,
+                    4,
+                    4,
+                    5,
+                    6,
+                    8
+                  ]
+                ],
+                initialStatIndexes: [
+                  3,
+                  2,
+                  4,
+                  2
+                ]
+              },
+              {
+                image: '/images/peter.png',
+                name: 'Peter Akimoto',
+                color: 'green',
+                birthday: 'September 3rd',
+                age: 13,
+                height: '4\'11',
+                hobbies: 'Bugs, Basketball',
+                weight: 98,
+                statRanges: [
+                  [
+                    3,
+                    3,
+                    3,
+                    4,
+                    6,
+                    6,
+                    7,
+                    7
+                  ],
+                  [
+                    2,
+                    3,
+                    3,
+                    4,
+                    5,
+                    5,
+                    6,
+                    8
+                  ],
+                  [
+                    3,
+                    4,
+                    4,
+                    4,
+                    5,
+                    6,
+                    6,
+                    7
+                  ],
+                  [
+                    3,
+                    4,
+                    4,
+                    5,
+                    6,
+                    7,
+                    7,
+                    8
+                  ]
+                ],
+                initialStatIndexes: [
+                  3,
+                  2,
+                  3,
+                  2
+                ]
+              },
+              {
+                image: '/images/brandon.png',
+                name: 'Brandon Jaspers',
+                color: 'green',
+                birthday: 'May 21st',
+                age: 12,
+                height: '5\'1',
+                hobbies: 'Computers, Camping, Hockey',
+                weight: 109,
+                statRanges: [
+                  [
+                    3,
+                    4,
+                    4,
+                    4,
+                    5,
+                    6,
+                    7,
+                    8
+                  ],
+                  [
+                    2,
+                    3,
+                    3,
+                    4,
+                    5,
+                    6,
+                    6,
+                    7
+                  ],
+                  [
+                    3,
+                    3,
+                    3,
+                    4,
+                    5,
+                    6,
+                    7,
+                    8
+                  ],
+                  [
+                    1,
+                    3,
+                    3,
+                    5,
+                    5,
+                    6,
+                    6,
+                    7
+                  ]
+                ],
+                initialStatIndexes: [
+                  2,
+                  3,
+                  3,
+                  2
+                ]
+              },
+              {
+                image: '/images/professor.png',
+                name: 'Professor Longfellow',
+                color: 'white',
+                birthday: 'July 27th',
+                age: 57,
+                height: '5\'11',
+                hobbies: 'Gaelic Music, Drama, Fine Wines',
+                weight: 153,
+                statRanges: [
+                  [
+                    2,
+                    2,
+                    4,
+                    4,
+                    5,
+                    5,
+                    6,
+                    6
+                  ],
+                  [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    5,
+                    6,
+                    6
+                  ],
+                  [
+                    1,
+                    3,
+                    3,
+                    4,
+                    5,
+                    5,
+                    6,
+                    7
+                  ],
+                  [
+                    4,
+                    5,
+                    5,
+                    5,
+                    5,
+                    6,
+                    7,
+                    8
+                  ]
+                ],
+                initialStatIndexes: [
+                  3,
+                  2,
+                  2,
+                  4
+                ]
+              },
+              {
+                image: '/images/father.png',
+                name: 'Father Rhinehardt',
+                color: 'white',
+                birthday: 'April 29th',
+                age: 62,
+                height: '5\'9',
+                hobbies: 'Fencing, Gardening',
+                weight: 185,
+                statRanges: [
+                  [
+                    2,
+                    3,
+                    3,
+                    4,
+                    5,
+                    6,
+                    7,
+                    7
+                  ],
+                  [
+                    1,
+                    2,
+                    2,
+                    4,
+                    4,
+                    5,
+                    5,
+                    7
+                  ],
+                  [
+                    3,
+                    4,
+                    5,
+                    5,
+                    6,
+                    7,
+                    7,
+                    8
+                  ],
+                  [
+                    1,
+                    3,
+                    3,
+                    4,
+                    5,
+                    6,
+                    6,
+                    8
+                  ]
+                ],
+                initialStatIndexes: [
+                  2,
+                  2,
+                  4,
+                  3
+                ]
+              },
+              {
+                image: '/images/vivian.png',
+                name: 'Vivian Lopez',
+                color: 'blue',
+                birthday: 'January 11th',
+                age: 42,
+                height: '5\'5',
+                hobbies: 'Old Movies, Horses',
+                weight: 142,
+                statRanges: [
+                  [
+                    3,
+                    4,
+                    4,
+                    4,
+                    4,
+                    6,
+                    7,
+                    8
+                  ],
+                  [
+                    2,
+                    2,
+                    2,
+                    4,
+                    4,
+                    5,
+                    6,
+                    6
+                  ],
+                  [
+                    4,
+                    4,
+                    4,
+                    5,
+                    6,
+                    7,
+                    8,
+                    8
+                  ],
+                  [
+                    4,
+                    5,
+                    5,
+                    5,
+                    5,
+                    6,
+                    6,
+                    7
+                  ]
+                ],
+                initialStatIndexes: [
+                  3,
+                  2,
+                  2,
+                  3
+                ]
+              },
+              {
+                image: '/images/madame.png',
+                name: 'Madame Zostra',
+                color: 'blue',
+                birthday: 'December 10th',
+                age: 37,
+                height: '5\'0',
+                hobbies: 'Astrology, Cooking, Baseball',
+                weight: 150,
+                statRanges: [
+                  [
+                    2,
+                    3,
+                    3,
+                    5,
+                    5,
+                    6,
+                    6,
+                    7
+                  ],
+                  [
+                    2,
+                    3,
+                    3,
+                    4,
+                    5,
+                    5,
+                    5,
+                    6
+                  ],
+                  [
+                    4,
+                    4,
+                    4,
+                    5,
+                    6,
+                    7,
+                    8,
+                    8
+                  ],
+                  [
+                    1,
+                    3,
+                    4,
+                    4,
+                    4,
+                    5,
+                    6,
+                    6
+                  ]
+                ],
+                initialStatIndexes: [
+                  2,
+                  3,
+                  2,
+                  3
+                ]
+              },
+              {
+                image: '/images/ox.png',
+                name: 'Ox Bellows',
+                color: 'red',
+                birthday: 'October 18th',
+                age: 23,
+                height: '6\'4',
+                hobbies: 'Football, Shiny Objects',
+                weight: 288,
+                statRanges: [
+                  [
+                    2,
+                    2,
+                    2,
+                    3,
+                    4,
+                    5,
+                    5,
+                    6
+                  ],
+                  [
+                    4,
+                    5,
+                    5,
+                    6,
+                    6,
+                    7,
+                    8,
+                    8
+                  ],
+                  [
+                    2,
+                    2,
+                    3,
+                    4,
+                    5,
+                    5,
+                    6,
+                    7
+                  ],
+                  [
+                    2,
+                    2,
+                    3,
+                    3,
+                    5,
+                    5,
+                    6,
+                    6
+                  ]
+                ],
+                initialStatIndexes: [
+                  4,
+                  2,
+                  2,
+                  2
+                ]
+              },
+              {
+                image: '/images/darrin.png',
+                name: 'Darrin "Flash" Williams',
+                color: 'red',
+                birthday: 'June 6th',
+                age: 20,
+                height: '5\'11',
+                hobbies: 'Track, Music, Shakesperean Literature',
+                weight: 188,
+                statRanges: [
+                  [
+                    4,
+                    4,
+                    4,
+                    5,
+                    6,
+                    7,
+                    7,
+                    8
+                  ],
+                  [
+                    2,
+                    3,
+                    3,
+                    4,
+                    5,
+                    6,
+                    6,
+                    7
+                  ],
+                  [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    5,
+                    5,
+                    7
+                  ],
+                  [
+                    2,
+                    3,
+                    3,
+                    4,
+                    5,
+                    5,
+                    5,
+                    7
+                  ]
+                ],
+                initialStatIndexes: [
+                  4,
+                  2,
+                  2,
+                  2
+                ]
+              },
+              {
+                image: '/images/zoe.png',
+                name: 'Zoe Ingstrom',
+                color: 'orange',
+                birthday: 'November 5th',
+                age: 8,
+                height: '3\'9',
+                hobbies: 'Dolls, Music',
+                weight: 49,
+                statRanges: [
+                  [
+                    4,
+                    4,
+                    4,
+                    4,
+                    5,
+                    6,
+                    8,
+                    8
+                  ],
+                  [
+                    2,
+                    2,
+                    3,
+                    3,
+                    4,
+                    4,
+                    6,
+                    7
+                  ],
+                  [
+                    3,
+                    4,
+                    5,
+                    5,
+                    6,
+                    6,
+                    7,
+                    8
+                  ],
+                  [
+                    1,
+                    2,
+                    3,
+                    4,
+                    4,
+                    5,
+                    5,
+                    5
+                  ]
+                ],
+                initialStatIndexes: [
+                  3,
+                  3,
+                  2,
+                  2
+                ]
+              },
+              {
+                image: '/images/missy.png',
+                name: 'Missy Dubourde',
+                color: 'orange',
+                birthday: 'February 14th',
+                age: 9,
+                height: '4\'2',
+                hobbies: 'Swimming, Medicine',
+                weight: 62,
+                statRanges: [
+                  [
+                    3,
+                    4,
+                    5,
+                    6,
+                    6,
+                    6,
+                    7,
+                    7
+                  ],
+                  [
+                    2,
+                    3,
+                    3,
+                    3,
+                    4,
+                    5,
+                    6,
+                    7
+                  ],
+                  [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    5,
+                    6,
+                    7
+                  ],
+                  [
+                    2,
+                    3,
+                    4,
+                    4,
+                    5,
+                    6,
+                    6,
+                    6
+                  ]
+                ],
+                initialStatIndexes: [
+                  2,
+                  3,
+                  2,
+                  3
+                ]
+              }
+            ];
+          }
+        },
+        selected: {
+          type: Number,
+          value: 0
+        }
       },
-      characterChanged: function() {
+      created: function () {
+      },
+      characterChanged: function () {
         if (this.character) {
           this.selectedCharacter = this.character;
           this.character = null;
-          this.async(function() {
+          this.async(function () {
             this.selected = 1;
-          })
+          });
         }
       },
-      goBack: function() {
+      goBack: function () {
         this.selected = 0;
-      },
-      characters: [
-        {
-          image: '/images/heather.png',
-          name: 'Heather Granville', color: 'purple', birthday: 'August 2nd',
-          age: 18, height: "5'2", hobbies: "Television, Shopping",
-          weight: 120,
-          statRanges: [
-            [3,3,4,5,6,6,7,8],
-            [3,3,3,4,5,6,7,8],
-            [3,3,3,4,5,6,6,6],
-            [2,3,3,4,5,6,7,8]
-          ],
-          initialStatIndexes: [
-            2,2,2,4
-          ],
-        },
-        {
-          image: '/images/jenny.png',
-          name: 'Jenny LeClerc', color: 'purple', birthday: 'March 4th',
-          age: 21, height: "5'7", hobbies: "Reading, Soccer",
-          weight: 142,
-          statRanges: [
-            [2,3,4,4,4,5,6,8],
-            [3,4,4,4,4,5,6,8],
-            [1,1,2,4,4,4,5,6],
-            [2,3,3,4,4,5,6,8]
-          ],
-          initialStatIndexes: [
-            3,2,4,2
-          ],
-        },
-        {
-          image: '/images/peter.png',
-          name: 'Peter Akimoto', color: 'green', birthday: 'September 3rd',
-          age: 13, height: "4'11", hobbies: "Bugs, Basketball",
-          weight: 98,
-          statRanges: [
-            [3,3,3,4,6,6,7,7],
-            [2,3,3,4,5,5,6,8],
-            [3,4,4,4,5,6,6,7],
-            [3,4,4,5,6,7,7,8]
-          ],
-          initialStatIndexes: [
-            3,2,3,2
-          ],
-        },
-        {
-          image: '/images/brandon.png',
-          name: 'Brandon Jaspers', color: 'green', birthday: 'May 21st',
-          age: 12, height: "5'1", hobbies: "Computers, Camping, Hockey",
-          weight: 109,
-          statRanges: [
-            [3,4,4,4,5,6,7,8],
-            [2,3,3,4,5,6,6,7],
-            [3,3,3,4,5,6,7,8],
-            [1,3,3,5,5,6,6,7]
-          ],
-          initialStatIndexes: [
-            2,3,3,2
-          ],
-        },
-        {
-          image: '/images/professor.png',
-          name: 'Professor Longfellow', color: 'white', birthday: 'July 27th',
-          age: 57, height: "5'11", hobbies: "Gaelic Music, Drama, Fine Wines",
-          weight: 153,
-          statRanges: [
-            [2,2,4,4,5,5,6,6],
-            [1,2,3,4,5,5,6,6],
-            [1,3,3,4,5,5,6,7],
-            [4,5,5,5,5,6,7,8]
-          ],
-          initialStatIndexes: [
-            3,2,2,4
-          ],
-        },
-        {
-          image: '/images/father.png',
-          name: 'Father Rhinehardt', color: 'white', birthday: 'April 29th',
-          age: 62, height: "5'9", hobbies: "Fencing, Gardening",
-          weight: 185,
-          statRanges: [
-            [2,3,3,4,5,6,7,7],
-            [1,2,2,4,4,5,5,7],
-            [3,4,5,5,6,7,7,8],
-            [1,3,3,4,5,6,6,8]
-          ],
-          initialStatIndexes: [
-            2,2,4,3
-          ],
-        },
-        {
-          image: '/images/vivian.png',
-          name: 'Vivian Lopez', color: 'blue', birthday: 'January 11th',
-          age: 42, height: "5'5", hobbies: "Old Movies, Horses",
-          weight: 142,
-          statRanges: [
-            [3,4,4,4,4,6,7,8],
-            [2,2,2,4,4,5,6,6],
-            [4,4,4,5,6,7,8,8],
-            [4,5,5,5,5,6,6,7]
-          ],
-          initialStatIndexes: [
-            3,2,2,3
-          ],
-        },
-        {
-          image: '/images/madame.png',
-          name: 'Madame Zostra', color: 'blue', birthday: 'December 10th',
-          age: 37, height: "5'0", hobbies: "Astrology, Cooking, Baseball",
-          weight: 150,
-          statRanges: [
-            [2,3,3,5,5,6,6,7],
-            [2,3,3,4,5,5,5,6],
-            [4,4,4,5,6,7,8,8],
-            [1,3,4,4,4,5,6,6]
-          ],
-          initialStatIndexes: [
-            2,3,2,3
-          ],
-        },
-        {
-          image: '/images/ox.png',
-          name: 'Ox Bellows', color: 'red', birthday: 'October 18th',
-          age: 23, height: "6'4", hobbies: "Football, Shiny Objects",
-          weight: 288,
-          statRanges: [
-            [2,2,2,3,4,5,5,6],
-            [4,5,5,6,6,7,8,8],
-            [2,2,3,4,5,5,6,7],
-            [2,2,3,3,5,5,6,6]
-          ],
-          initialStatIndexes: [
-            4,2,2,2
-          ],
-        },
-        {
-          image: '/images/darrin.png',
-          name: 'Darrin "Flash" Williams', color: 'red', birthday: 'June 6th',
-          age: 20, height: "5'11",
-          hobbies: "Track, Music, Shakesperean Literature",
-          weight: 188,
-          statRanges: [
-            [4,4,4,5,6,7,7,8],
-            [2,3,3,4,5,6,6,7],
-            [1,2,3,4,5,5,5,7],
-            [2,3,3,4,5,5,5,7]
-          ],
-          initialStatIndexes: [
-            4,2,2,2
-          ],
-        },
-        {
-          image: '/images/zoe.png',
-          name: 'Zoe Ingstrom', color: 'orange', birthday: 'November 5th',
-          age: 8, height: "3'9", hobbies: "Dolls, Music",
-          weight: 49,
-          statRanges: [
-            [4,4,4,4,5,6,8,8],
-            [2,2,3,3,4,4,6,7],
-            [3,4,5,5,6,6,7,8],
-            [1,2,3,4,4,5,5,5]
-          ],
-          initialStatIndexes: [
-            3,3,2,2
-          ],
-        },
-        {
-          image: '/images/missy.png',
-          name: 'Missy Dubourde', color: 'orange', birthday: 'February 14th',
-          age: 9, height: "4'2", hobbies: "Swimming, Medicine",
-          weight: 62,
-          statRanges: [
-            [3,4,5,6,6,6,7,7],
-            [2,3,3,3,4,5,6,7],
-            [1,2,3,4,5,5,6,7],
-            [2,3,4,4,5,6,6,6]
-          ],
-          initialStatIndexes: [
-            2,3,2,3
-          ]
-        },
-      ]
-    })
+      }
+    });
   </script>
-</polymer-element>
+</dom-module>
 
 <betrayal-house-app></betrayal-house-app>
-</body>
-</html>
+
+
+</body></html>
