@@ -1,0 +1,231 @@
+<dom-module id="betrayal-house-character-page">
+  <template>
+    <style is="custom-style" include="iron-flex iron-flex-alignment">
+      :host {
+        height: 1vh;
+        display: block;
+      }
+      .back-button {
+        padding-bottom: 20px;
+        cursor: pointer;
+      }
+      .name {
+        font-size: 2em;
+      }
+      .statName {
+        font-size: 2em;
+      }
+      [highlight] {
+        color: red;
+      }
+      [initial] {
+        border-bottom: 2px solid rgba(255, 255, 255, 0.35);
+      }
+      .stat {
+        padding-top: 35px;
+      }
+      .statVals {
+        width: 100%;
+        /*max-width: 600px;*/
+        font-size: 2em;
+      }
+      .statVals * {
+        will-change: color;
+        transition: color 0.3s ease-in-out;
+      }
+      .statVals button:first-child {
+        margin-right: 50px;
+      }
+      .statVals button:last-child {
+        margin-left: 50px;
+      }
+      button {
+        outline: none;
+        border: none;
+      }
+      .bonusValue {
+        font-size: 0.5em;
+        color: white;
+      }
+    </style>
+    <div class="main layout vertical justified" charcolor="{{char.color}}">
+      <div>
+        <div class="back-button" on-tap="goBack">&lt; Back</div>
+        <div class="name" on-tap="selectCharacter">{{char.name}}</div>
+        <div><span>{{char.height}}</span>, <span>{{char.weight}}</span>lbs,
+        <span>{{char.age}}</span> years old</div>
+        <div>Hobbies: <span>{{char.hobbies}}</span></div>
+      </div>
+      <template is="dom-repeat" items="{{_computeItems()}}" as="idx">
+        <div class="stat layout vertical center">
+          <span class="statName">{{_computeExpression6(idx, statNames)}}</span>
+          <span class="statVals layout horizontal justified">
+            <button charbgcolor on-tap="buttonTapped">&lt;</button>
+
+            <div highlight$="{{_computeHighlight(char, idx)}}">
+              ✘
+            </div>
+            <template is="dom-repeat"
+                      items="{{_computeItems(char, idx)}}"
+                      as="val"
+                      index-as="{{_computeItems2(char, idx)}}">
+              <div highlight$="{{_computeHighlight(char, i, idx)}}"
+                   initial$="{{_computeHighlight2(char, i, idx)}}">
+                <span>{{val}}</span>
+                <template is="dom-if" if="{{_computeIf(i)}}">
+                  <sup class="bonusValue"
+                       hidden$="{{_computeHidden(char, idx)}}">
+                    [<span>{{_computeExpression8(char, idx)}}</span>]
+                </sup></template>
+              </div>
+            </template>
+            <button charbgcolor on-tap="buttonTapped">&gt;</button>
+          </span>
+        </div>
+      </template>
+    </div>
+  </template>
+  <script>
+    Polymer({
+      is: 'betrayal-house-character-page',
+      properties: {
+        char: { computed: 'makeChar(character)' },
+        character: {
+          notify: true,
+          observer: 'characterChanged'
+        },
+        dead: {
+          observer: 'deadChanged',
+          computed: 'isDead(character.statIndexes)'
+        },
+        statNames: {
+          type: Array,
+          value() {
+            return [
+              'Speed',
+              'Might',
+              'Sanity',
+              'Knowledge'
+            ];
+          }
+        }
+      },
+      observers: [
+        'saveToStorage(character.*)'
+      ],
+      created() {
+        this.storage =
+            window.localStorage['betrayal-house-character-page-storage'];
+        try {
+          this.storage = JSON.parse(this.storage || '{}');
+        } catch (_) {
+          this.storage = {};
+        }
+      },
+      saveToStorage() {
+        if (this.character && this.character.statIndexes) {
+          this.set('storage' + ('.' + this.character.name), {
+            statIndexes: this.character.statIndexes,
+            statBonusValue: this.character.statBonusValue
+          });
+          window.localStorage['betrayal-house-character-page-storage'] =
+              JSON.stringify(this.storage);
+        }
+      },
+      characterChanged() {
+        if (!(this.character.name in this.storage)) {
+          this.set('storage' + ('.' + this.character.name), {
+            statIndexes: this.character.initialStatIndexes.slice(),
+            statBonusValue: [
+              0,
+              0,
+              0,
+              0
+            ]
+          });
+        }
+        var characterStorage = this.storage[this.character.name];
+        this.set('character.statIndexes', characterStorage.statIndexes);
+        this.set('character.statBonusValue', characterStorage.statBonusValue);
+      },
+      goBack() {
+        this.fire('betrayal-go-back');
+        Polymer.dom(document.body).removeAttribute('dead');
+      },
+      buttonTapped(ev, val, elmnt) {
+        var whichStat = elmnt.templateInstance.model.idx;
+        this.set('character.statIndexes',
+            this.character.statIndexes.slice());
+        this.set('character.statBonusValue',
+            this.character.statBonusValue.slice());
+        var statIndexes = this.character.statIndexes;
+        if (Polymer.dom(elmnt).textContent.trim() === '<') {
+          if (this.character.statBonusValue[whichStat] > 0) {
+            this.character.statBonusValue[whichStat]--;
+          } else {
+            statIndexes[whichStat] = Math.max(statIndexes[whichStat] - 1, -1);
+          }
+        } else {
+          if (statIndexes[whichStat] == 7) {
+            this.character.statBonusValue[whichStat]++;
+          } else {
+            statIndexes[whichStat]++;
+          }
+        }
+      },
+      isDead(statIndexes) {
+        if (!statIndexes) {
+          return false;
+        }
+        for (var i = 0; i < statIndexes.length; i++) {
+          if (statIndexes[i] < 0) {
+            return true;
+          }
+        }
+        return false;
+      },
+      deadChanged() {
+        if (this.dead) {
+          Polymer.dom(document.body).setAttribute('dead', 'dead');
+        } else {
+          Polymer.dom(document.body).removeAttribute('dead');
+        }
+      },
+      _computeItems() {
+        return [
+          0,
+          1,
+          2,
+          3
+        ];
+      },
+      _computeHighlight(char, idx) {
+        return char && char.statIndexes && -1 == char.statIndexes[idx];
+      },
+      _computeItems2(char, idx) {
+        return char && char.statRanges && char.statRanges[idx];
+      },
+      _computeHighlight2(char, i, idx) {
+        return char && char.statIndxes && i == char.statIndexes[idx];
+      },
+      _computeInitial(char, i, idx) {
+        return char && char.initialStatIndexes && i == char.initialStatIndexes[idx];
+      },
+      _computeIf(i) {
+        return i === 7;
+      },
+      _computeHidden(char, idx) {
+        return char && char.statBonusValue && char.statBonusValue[idx] == 0;
+      },
+      _computeExpression6(idx, statNames) {
+        return statNames && statNames[idx];
+      },
+      _computeExpression8(char, idx) {
+        return char && char.statBonusValue && char.statBonusValue[idx];
+      },
+      makeChar(character) {
+        return character;
+      }
+    });
+  </script>
+</dom-module>

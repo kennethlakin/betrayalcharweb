@@ -1,0 +1,82 @@
+<dom-module id="betrayal-house-choose-character">
+  <template>
+    <style is="custom-style" include="iron-flex iron-flex-alignment">
+      header {
+        font-size: 2.5em;
+      }
+      .character {
+        padding-top: 30px;
+      }
+      .name {
+        font-size: 2em;
+        cursor: pointer;
+      }
+      .statName {
+        display: inline-block;
+        width: 100px;
+      }
+      [highlight] {
+        color: red;
+      }
+    </style>
+    <header>
+      Who are you?
+    </header>
+    <template is="dom-repeat" as="char" items="{{characters}}">
+      <div class="character layout horizontal" charcolor="[[char.color]]">
+        <div><img height="152"
+                  width="152"
+                  on-tap="selectCharacter"
+                  src="[[char.image]]"></div>
+        <div>
+          <div class="name" on-tap="selectCharacter">{{char.name}}</div>
+          <div>
+            <span>{{char.height}}</span>,
+            <span>{{char.weight}}</span>lbs,
+            <span>{{char.age}}</span> years old
+          </div>
+          <div>Hobbies: <span>{{char.hobbies}}</span></div>
+          <div>
+            <template is="dom-repeat">
+              <div>
+                <span class="statName">{{_computeExpression6(idx, statNames)}}</span>
+                <span>
+                  <template is="dom-repeat">
+                    <span highlight$="[[_computeInitial(char, i, idx)]]">
+                      <span>{{val}}</span>
+                    </span>
+                  </template>
+                </span>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </template>
+  </template>
+  <script>
+    Polymer({
+      is: 'betrayal-house-choose-character',
+      properties: {
+        character: { notify: true },
+        characters: { notify: true },
+        statNames: {
+          type: Array,
+          value() {
+            return ['Speed', 'Might', 'Sanity', 'Knowledge'];
+          }
+        }
+      },
+      selectCharacter(ev) {
+        this.character = ev.model.char;
+        this.fire('betrayal-character-chosen', this.character);
+      },
+      _computeInitial(char, i, idx) {
+        return i == char.initialStatIndexes[idx];
+      },
+      _computeExpression6(idx, statNames) {
+        return statNames[idx];
+      }
+    });
+  </script>
+</dom-module>
