@@ -1,0 +1,33 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/app-route/app-location.html">
+<link rel="import" href="../bower_components/app-route/app-route.html">
+<link rel="import" href="../bower_components/iron-pages/iron-pages.html">
+<link rel="import" href="./connect-screen.html">
+<link rel="import" href="./game-screen.html">
+
+<dom-module id="connect-app">
+  <template>
+    <style>
+
+    </style>
+    <app-location route="{{route}}" use-hash-as-path></app-location>
+    <app-route route="{{route}}" pattern="/:page" data="{{data}}" tail="{{tail}}"></app-route>
+    <iron-pages fallback-selection="home" attr-for-selected="page" selected="{{data.page}}">
+      <connect-screen page="home"></connect-screen>
+      <game-screen page="game" route="{{tail}}"></game-screen>
+    </iron-pages>
+  </template>
+  <script>
+    class ConnectApp extends Polymer.Element {
+      constructor() {
+        super();
+
+        if (location.hash === '') {
+          location.hash = '/';
+        }
+      }
+      static get is() { return 'connect-app'; }
+    };
+    customElements.define(ConnectApp.is, ConnectApp);
+  </script>
+</dom-module>

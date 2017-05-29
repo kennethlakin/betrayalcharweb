@@ -1,0 +1,68 @@
+<link rel="import" href="../bower_components/polymer/polymer.html">
+<link rel="import" href="../bower_components/app-route/app-route.html">
+
+<dom-module id="game-screen">
+  <template>
+    <style></style>
+    <div>Game id: {{data.game}}</div>
+
+    <button on-click='refresh'>Refresh</button>
+
+    <div>Players:</div>
+    <ul>
+      <template is="dom-repeat" items="{{players}}">
+        <li>{{item.name}}</li>
+      </template>
+    </ul>
+
+    <app-route route="{{route}}" pattern="/:game/:player" data="{{data}}">
+    </app-route>
+  </template>
+  <script>
+    class GameScreen extends Polymer.Element {
+      static get is() { return 'game-screen'; }
+
+      static get properties() {
+        return {
+          route: {
+            type: Object
+          },
+          server: {
+            value: () => new Server(),
+          },
+          players: {
+            type: Object
+          }
+        }
+      }
+
+      static get observers() { return ['routeDataChanged(data.*)'] }
+
+      constructor() {
+        super();
+        this.refresh = this.refresh.bind(this);
+        this.stream = undefined;
+      }
+
+      async routeDataChanged() {
+        if (this.data && this.data.game && this.data.player) {
+          this.game = new Game(this.data.game, this.server);
+          this.player = new Player(this.data.player, this.data.game, this.server);
+          this.stream = getStream(this.game.id);
+          this.stream.addEventListener('message', this.refresh);
+          await this.refresh();
+        }
+      }
+
+      async refresh() {
+        if (this.game) {
+          this.players = await this.game.getPlayers();
+        } else {
+          this.players = [];
+        }
+      }
+    };
+
+    customElements.define(GameScreen.is, GameScreen);
+  </script>
+</dom-module>

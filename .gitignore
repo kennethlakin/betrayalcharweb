@@ -1,5 +1,8 @@
 static/bower_components
 static/raw_images
+static/node_modules
+static/src/*.js
+static/src/*.js.map
 rust_server/target
 erl_server/.rebar
 erl_server/deps

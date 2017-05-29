@@ -1,4 +1,7 @@
-<!DOCTYPE html><html><head>
+<!DOCTYPE html>
+<html>
+
+<head>
   <meta charset="utf-8">
   <title>Betrayal House!</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -16,24 +19,21 @@
 
   <script src="./bower_components/webcomponentsjs/webcomponents-lite.js"></script>
   <link rel="import" href="./bower_components/font-roboto/roboto.html">
-  <link rel="import" href="./src/betrayal-house-app.html">
+  <!--<link rel="import" href="./src/betrayal-house-app.html">-->
 
 
   <style shim-shadowdom>
     body {
       font-family: 'RobotoDraft';
-      background-color: rgba(0, 0, 0, 1);
-      color: white;
       will-change: color;
       transition: background-color 1.2s ease-in;
     }
+
     body[dead] {
       transition: background-color 5.3s ease-in;
       background-color: rgba(179, 3, 3, 1);
     }
-    body[dead] {
-      --highlight-color: black;
-    }
+
     body {
       --green-color: green;
       --white-color: white;
@@ -42,15 +42,20 @@
       --purple-color: rgb(211, 0, 211);
       --orange-color: orange;
     }
+
     [fullbleed] {
       margin: 0;
-      height:100vh;
+      height: 100vh;
     }
   </style>
 </head>
 
-<body unresolved fullbleed>
+<body fullbleed>
 
-<betrayal-house-app></betrayal-house-app>
+  <!--<betrayal-house-app></betrayal-house-app>-->
 
-</body></html>
+  <link rel="import" href="./src/connect-app.html">
+  <connect-app></connect-app>
+</body>
+
+</html>

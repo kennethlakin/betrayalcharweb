@@ -1,0 +1,73 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/paper-spinner/paper-spinner.html">
+<link rel="import" href="./server-class.html">
+
+<dom-module id="connect-screen">
+  <template>
+    <style>
+      div {
+        color: black;
+      }
+    </style>
+    <input value="{{name::input}}">
+    <button on-click="createGame">Create game</button>
+
+    <input value="{{gameId::input}}">
+    <button on-click="joinGame">Join game</button>
+
+    <div class="error">[[errorText]]</div>
+
+    <div>
+      <paper-spinner active="[[loading]]"></paper-spinner>
+    </div>
+  </template>
+  <script>
+    class ConnectScreen extends Polymer.Element {
+      static get is() { return 'connect-screen'; }
+
+      static get properties() {
+        return {
+          name: { value: 'Anony Mouse' },
+          server: { value: () => new Server() },
+          loading: { value: false },
+          gameId: { type: String },
+          errorText: { type: String },
+        };
+      }
+
+      createGame() {
+        this._handleAsync(this._createGame());
+      }
+
+      async _createGame() {
+        const game = new Game(await this.server.createGame(), this.server);
+        return this.transitionToGameScreen(game);
+      }
+
+      joinGame() {
+        this._handleAsync(this._joinGame());
+      }
+
+      async _joinGame() {
+        return this.transitionToGameScreen(new Game(this.gameId, this.server));
+      }
+
+      _handleAsync(promise) {
+        this.errorText = '';
+        this.loading = true;
+        promise.catch((err) => {
+          this.errorText = err ? (err.message || '' + err) : 'unknown error';
+        }).then(() => {
+          this.loading = false;
+        });
+      }
+
+      async transitionToGameScreen(game) {
+        const player = await game.addPlayer(this.name);
+        location.hash = `/game/${game.id}/${player.id}`;
+      }
+    };
+
+    customElements.define('connect-screen', ConnectScreen);
+  </script>
+</dom-module>

@@ -19,6 +19,10 @@
     "font-roboto": "polymerelements/font-roboto#^1",
     "iron-flex-layout": "polymerelements/iron-flex-layout#^2",
     "neon-animation": "polymerelements/neon-animation#^2",
-    "webcomponentsjs": "^1.0.1"
+    "webcomponentsjs": "^1.0.1",
+    "paper-spinner": "^2.0.0",
+    "iron-location": "polymerelements/iron-location#^2.0.1",
+    "app-route": "polymerelements/app-route#^2.0.0",
+    "iron-pages": "polymerelements/iron-pages#^2.0.0"
   }
 }
